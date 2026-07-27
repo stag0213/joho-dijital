@@ -51,6 +51,8 @@ h2.sec{font-size:19px;margin:8px 0 0;padding-left:11px;border-left:5px solid var
 .mode-seg button{flex:1;min-height:46px;font-size:15px;font-weight:700;border-radius:var(--r8);
   border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;}
 .mode-seg button.on{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);}
+.wave-workbench{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.95fr);gap:14px;align-items:start;}
+.wave-main,.wave-side{display:flex;flex-direction:column;gap:12px;min-width:0;}
 .scope-box{border:1px solid var(--border-default);border-radius:var(--r12);overflow:hidden;background:var(--scope-bg);}
 .scope-cap{font-size:12px;color:rgba(190,240,225,.85);padding:8px 12px 0;font-weight:700;}
 #oscCv{display:block;width:100%;height:290px;}
@@ -84,6 +86,9 @@ input[type=range].short{width:130px;}
   border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;}
 .pbtn:hover{background:var(--bg-subtle);border-color:var(--border-strong);}
 .ctrl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.wave-side .ctrl-grid{grid-template-columns:1fr;}
+.wave-side .preset-row{align-items:flex-start;flex-direction:column;}
+.wave-side .preset-row .preset-label{margin-bottom:2px;}
 .lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;
   color:var(--text-secondary);margin-bottom:8px;gap:8px;}
 .lbl b{font-size:16px;color:var(--brand-secondary);font-variant-numeric:tabular-nums;}
@@ -135,9 +140,14 @@ footer.foot{font-size:12px;color:var(--text-tertiary);border-top:1px solid var(-
   padding-top:14px;line-height:1.8;}
 .printbtn{background:none;border:1px solid var(--border-default);border-radius:var(--r8);
   padding:6px 12px;font-size:13px;color:var(--text-link);cursor:pointer;}
+@media (max-width:900px){
+  .wave-workbench{grid-template-columns:1fr;}
+  .wave-side .preset-row{align-items:center;flex-direction:row;}
+  .wave-side .ctrl-grid{grid-template-columns:repeat(2,1fr);}
+}
 @media (max-width:620px){
   body{padding:14px 10px 44px;} h1{font-size:21px;}
-  .ctrl-grid{grid-template-columns:1fr;} .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .ctrl-grid,.wave-side .ctrl-grid{grid-template-columns:1fr;} .stat-grid{grid-template-columns:repeat(2,1fr);}
   .peak-row{grid-template-columns:1fr;} #oscCv{height:230px;} #fftCv{height:200px;}
 }
 @media print{
@@ -169,9 +179,94 @@ footer.foot{font-size:12px;color:var(--text-tertiary);border-top:1px solid var(-
   <button data-s="mic">🎤 マイク入力（実際の音）</button>
 </div>
 
-<div class="scope-box">
-  <div class="scope-cap">① 波形（時間領域）― オシロスコープ</div>
-  <canvas id="oscCv"></canvas>
+<div class="wave-workbench">
+  <div class="wave-main">
+    <div class="scope-box">
+      <div class="scope-cap">① 波形（時間領域）― オシロスコープ</div>
+      <canvas id="oscCv"></canvas>
+    </div>
+
+    <div id="warnBox" class="warn"></div>
+
+    <div class="card mic-card" id="micPanel" style="display:none">
+      <div class="mic-row">
+        <button class="playbtn primary" id="micBtn">🎤 マイクを開始</button>
+        <button class="playbtn" id="freezeBtn" disabled>⏸ 波形を静止</button>
+        <div class="meter"><div class="meter-bar" id="meterBar"></div></div>
+        <span class="mic-info" id="micInfo">停止中</span>
+      </div>
+      <div class="mic-row">
+        <label class="lbl2">表示倍率 <b id="gVal">×3</b></label>
+        <input type="range" id="gRng" min="1" max="20" step="1" value="3" class="short">
+        <label class="chk"><input type="checkbox" id="rawChk"> ノイズ抑制をオフにする（波形観察におすすめ）</label>
+      </div>
+      <div class="mic-row">
+        <button class="playbtn" id="recBtn" disabled>⏺ 1.5秒録音</button>
+        <button class="playbtn" id="recOrig" disabled>▶ 録音（元の音）</button>
+        <button class="playbtn" id="recDig" disabled>▶ 録音（デジタル化）</button>
+        <span class="hint2" id="recInfo">「あー」と声を出しながら録音すると比較しやすいです</span>
+      </div>
+    </div>
+
+    <div class="toggle-row">
+      <label><input type="checkbox" id="tAnalog" checked> アナログ波形</label>
+      <label><input type="checkbox" id="tDots" checked> 標本点</label>
+      <label><input type="checkbox" id="tStep" checked> 量子化（階段）波形</label>
+      <label><input type="checkbox" id="tErr"> 量子化誤差</label>
+      <label><input type="checkbox" id="tLvl" checked> 量子化目盛</label>
+    </div>
+
+    <div class="play-row" id="simPlayRow">
+      <button class="playbtn primary" id="pOrig">▶ 元の音を聞く</button>
+      <button class="playbtn" id="pDig">▶ デジタル化した音を聞く</button>
+      <span class="hint2">※音量に注意してください（約1秒鳴ります）</span>
+    </div>
+  </div>
+
+  <div class="wave-side">
+    <div class="preset-row">
+      <span class="preset-label">プリセット</span>
+      <button class="pbtn" data-p="rough">粗いデジタル化</button>
+      <button class="pbtn" data-p="tel">電話 8kHz/8bit</button>
+      <button class="pbtn" data-p="cd">CD 44.1kHz/16bit</button>
+      <button class="pbtn" data-p="alias">エイリアシング</button>
+    </div>
+
+    <div class="ctrl-grid">
+      <div class="card" id="simCard">
+        <label class="lbl">元の音の周波数 <b id="fVal">200 Hz</b></label>
+        <input type="range" id="fRng" min="100" max="4000" step="20" value="200">
+        <div class="seg seg2" id="waveSeg">
+          <button data-w="sine" class="on">サイン波</button>
+          <button data-w="voice">合成波</button>
+          <button data-w="tri">三角波</button>
+        </div>
+      </div>
+      <div class="card">
+        <label class="lbl">標本化周波数 <b id="fsVal">2,000 Hz</b></label>
+        <input type="range" id="fsRng" min="0" max="7" step="1" value="2">
+        <div class="hint">1秒間に音の大きさを測る回数（サンプリング）</div>
+      </div>
+      <div class="card">
+        <label class="lbl">量子化ビット数 <b id="bVal">3 bit</b></label>
+        <input type="range" id="bRng" min="1" max="16" step="1" value="3">
+        <div class="hint">段階数 = <span id="lvlVal">8</span> 段階</div>
+      </div>
+      <div class="card">
+        <label class="lbl">表示時間 / チャンネル</label>
+        <div class="seg" id="winSeg">
+          <button data-ms="5">5ms</button>
+          <button data-ms="10" class="on">10ms</button>
+          <button data-ms="20">20ms</button>
+          <button data-ms="50">50ms</button>
+        </div>
+        <div class="seg seg2" id="chSeg">
+          <button data-c="1" class="on">モノラル</button>
+          <button data-c="2">ステレオ</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="scope-box" id="fftBox">
@@ -207,84 +302,6 @@ footer.foot{font-size:12px;color:var(--text-tertiary);border-top:1px solid var(-
   </div>
 </div>
 
-<div id="warnBox" class="warn"></div>
-
-<div class="card mic-card" id="micPanel" style="display:none">
-  <div class="mic-row">
-    <button class="playbtn primary" id="micBtn">🎤 マイクを開始</button>
-    <button class="playbtn" id="freezeBtn" disabled>⏸ 波形を静止</button>
-    <div class="meter"><div class="meter-bar" id="meterBar"></div></div>
-    <span class="mic-info" id="micInfo">停止中</span>
-  </div>
-  <div class="mic-row">
-    <label class="lbl2">表示倍率 <b id="gVal">×3</b></label>
-    <input type="range" id="gRng" min="1" max="20" step="1" value="3" class="short">
-    <label class="chk"><input type="checkbox" id="rawChk"> ノイズ抑制をオフにする（波形観察におすすめ）</label>
-  </div>
-  <div class="mic-row">
-    <button class="playbtn" id="recBtn" disabled>⏺ 1.5秒録音</button>
-    <button class="playbtn" id="recOrig" disabled>▶ 録音（元の音）</button>
-    <button class="playbtn" id="recDig" disabled>▶ 録音（デジタル化）</button>
-    <span class="hint2" id="recInfo">「あー」と声を出しながら録音すると比較しやすいです</span>
-  </div>
-</div>
-
-<div class="preset-row">
-  <span class="preset-label">プリセット</span>
-  <button class="pbtn" data-p="rough">粗いデジタル化</button>
-  <button class="pbtn" data-p="tel">電話 8kHz/8bit</button>
-  <button class="pbtn" data-p="cd">CD 44.1kHz/16bit</button>
-  <button class="pbtn" data-p="alias">エイリアシング</button>
-</div>
-
-<div class="ctrl-grid">
-  <div class="card" id="simCard">
-    <label class="lbl">元の音の周波数 <b id="fVal">200 Hz</b></label>
-    <input type="range" id="fRng" min="100" max="4000" step="20" value="200">
-    <div class="seg seg2" id="waveSeg">
-      <button data-w="sine" class="on">サイン波</button>
-      <button data-w="voice">合成波</button>
-      <button data-w="tri">三角波</button>
-    </div>
-  </div>
-  <div class="card">
-    <label class="lbl">標本化周波数 <b id="fsVal">2,000 Hz</b></label>
-    <input type="range" id="fsRng" min="0" max="7" step="1" value="2">
-    <div class="hint">1秒間に音の大きさを測る回数（サンプリング）</div>
-  </div>
-  <div class="card">
-    <label class="lbl">量子化ビット数 <b id="bVal">3 bit</b></label>
-    <input type="range" id="bRng" min="1" max="16" step="1" value="3">
-    <div class="hint">段階数 = <span id="lvlVal">8</span> 段階</div>
-  </div>
-  <div class="card">
-    <label class="lbl">表示時間 / チャンネル</label>
-    <div class="seg" id="winSeg">
-      <button data-ms="5">5ms</button>
-      <button data-ms="10" class="on">10ms</button>
-      <button data-ms="20">20ms</button>
-      <button data-ms="50">50ms</button>
-    </div>
-    <div class="seg seg2" id="chSeg">
-      <button data-c="1" class="on">モノラル</button>
-      <button data-c="2">ステレオ</button>
-    </div>
-  </div>
-</div>
-
-<div class="toggle-row">
-  <label><input type="checkbox" id="tAnalog" checked> アナログ波形</label>
-  <label><input type="checkbox" id="tDots" checked> 標本点</label>
-  <label><input type="checkbox" id="tStep" checked> 量子化（階段）波形</label>
-  <label><input type="checkbox" id="tErr"> 量子化誤差</label>
-  <label><input type="checkbox" id="tLvl" checked> 量子化目盛</label>
-</div>
-
-<div class="play-row" id="simPlayRow">
-  <button class="playbtn primary" id="pOrig">▶ 元の音を聞く</button>
-  <button class="playbtn" id="pDig">▶ デジタル化した音を聞く</button>
-  <span class="hint2">※音量に注意してください（約1秒鳴ります）</span>
-</div>
 
 <h2 class="sec">データ量の計算</h2>
 <div class="stat-grid">
