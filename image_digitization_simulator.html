@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>画像のデジタル化シミュレータ ｜ 高校情報Ⅰ Web教材</title>
+<meta name="description" content="高校「情報Ⅰ」画像のデジタル化（標本化・量子化・符号化）を、解像度と階調のスライダーで体験できるWeb教材。カメラ・画像ファイル取り込み対応。">
+<style>
+:root{
+  --text-primary:#1a2b28; --text-secondary:#5a6b67; --text-tertiary:#8a9995;
+  --text-link:#0a6ea8; --text-on-brand:#ffffff;
+  --bg-page:#f4f7f6; --bg-surface:#ffffff; --bg-subtle:#eef3f1;
+  --brand-primary:#12776b; --brand-secondary:#0f7fff;
+  --border-default:#d5e0dd; --border-strong:#9fb4af; --border-subtle:#e8efed;
+  --success:#10b981; --warning:#f59e0b; --error:#ef4444;
+  --r8:8px; --r12:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --text-primary:#e6f0ee; --text-secondary:#a7b9b5; --text-tertiary:#7d8f8b;
+    --text-link:#6cc6ff; --text-on-brand:#052a26;
+    --bg-page:#0e1614; --bg-surface:#16211f; --bg-subtle:#1d2b28;
+    --brand-primary:#3ddbc4; --brand-secondary:#5ab0ff;
+    --border-default:#2a3b38; --border-strong:#496460; --border-subtle:#22302d;
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg-page); color:var(--text-primary);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.7; padding:20px 16px 60px;
+}
+.page{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+header.top{border-bottom:2px solid var(--brand-primary);padding-bottom:14px;}
+.subject{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--brand-primary);}
+h1{font-size:26px;margin:6px 0 4px;line-height:1.35;}
+.lead{font-size:14px;color:var(--text-secondary);margin:0;}
+h2.sec{font-size:19px;margin:8px 0 0;padding-left:11px;border-left:5px solid var(--brand-primary);}
+.ih-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+.ih-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.bdg{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid;font-weight:700;}
+.b-teal{color:#0d7d6e;border-color:#3DE0C8;background:rgba(61,224,200,.13);}
+.b-amber{color:#8a5a00;border-color:#FFB84D;background:rgba(255,184,77,.15);}
+.b-purple{color:#5b3fb8;border-color:#a78bfa;background:rgba(167,139,250,.14);}
+@media (prefers-color-scheme:dark){
+  .b-teal{color:#7ff0dd;} .b-amber{color:#ffd79a;} .b-purple{color:#cbb8ff;}
+}
+.mode-seg{display:flex;gap:8px;}
+.mode-seg button{flex:1;min-height:46px;font-size:15px;font-weight:700;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;}
+.mode-seg button.on{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);}
+.card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:13px 16px;}
+.sub-card{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.cv-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cv-box{border:1px solid var(--border-default);border-radius:var(--r12);overflow:hidden;background:#12191c;}
+.cv-cap{font-size:12px;color:rgba(220,235,240,.88);padding:8px 11px 0;font-weight:700;}
+#srcCv,#outCv{display:block;width:100%;height:250px;}
+#outCv{cursor:crosshair;}
+.insp{font-size:14px;line-height:1.85;}
+.insp b{color:var(--brand-secondary);}
+.swatch{display:inline-block;width:15px;height:15px;border-radius:3px;
+  border:1px solid var(--border-strong);vertical-align:-2px;margin:0 5px;}
+.mono{font-variant-numeric:tabular-nums;letter-spacing:.05em;color:var(--brand-secondary);
+  font-weight:700;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.preset-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.preset-label{font-size:12px;color:var(--text-secondary);}
+.pbtn{min-height:38px;padding:6px 13px;font-size:14px;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;}
+.pbtn:hover{background:var(--bg-subtle);border-color:var(--border-strong);}
+.ctrl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;
+  color:var(--text-secondary);margin-bottom:8px;gap:8px;}
+.lbl b{font-size:16px;color:var(--brand-secondary);font-variant-numeric:tabular-nums;}
+.lbl2{font-size:14px;color:var(--text-secondary);}
+input[type=range]{width:100%;height:28px;accent-color:var(--brand-secondary);cursor:pointer;}
+input[type=range]:disabled{opacity:.4;}
+.hint{font-size:12px;color:var(--text-tertiary);margin-top:4px;line-height:1.55;}
+.hint2{font-size:12px;color:var(--text-tertiary);}
+.seg{display:flex;gap:6px;flex:1;}
+.seg button{flex:1;min-height:36px;padding:0 6px;font-size:14px;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;}
+.seg button.on{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);font-weight:700;}
+.toggle-col{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--text-secondary);}
+.toggle-col label{display:flex;align-items:center;gap:7px;cursor:pointer;min-height:29px;}
+.playbtn{min-height:44px;padding:0 16px;border-radius:var(--r8);border:1px solid var(--border-default);
+  background:var(--bg-surface);color:var(--text-primary);font-size:14px;font-weight:700;cursor:pointer;}
+.playbtn.primary{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);}
+.playbtn:disabled{opacity:.42;cursor:not-allowed;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.stat{border:1px solid;border-radius:var(--r8);padding:12px;display:flex;flex-direction:column;gap:4px;}
+.stat span{font-size:12px;opacity:.85;} .stat b{font-size:16px;font-variant-numeric:tabular-nums;}
+.s-blue{border-color:#5ab0ff;background:rgba(90,176,255,.10);}
+.s-purple{border-color:#a78bfa;background:rgba(167,139,250,.10);}
+.s-teal{border-color:#3DE0C8;background:rgba(61,224,200,.10);}
+.s-amber{border-color:#FFB84D;background:rgba(255,184,77,.10);}
+.formula{background:var(--bg-subtle);border-radius:var(--r8);padding:12px 15px;font-size:14px;
+  line-height:2;font-variant-numeric:tabular-nums;}
+.code-card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:16px;}
+.code-title{font-size:17px;font-weight:700;margin-bottom:12px;}
+.tbl-scroll{overflow-x:auto;}
+.code-tbl{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}
+.code-tbl th{text-align:right;padding:7px 9px;border-bottom:2px solid var(--border-default);
+  color:var(--text-secondary);font-weight:700;font-size:12px;white-space:nowrap;}
+.code-tbl td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--border-subtle);white-space:nowrap;}
+.code-tbl td.bin{color:var(--brand-secondary);font-weight:700;letter-spacing:.05em;
+  font-family:ui-monospace,Menlo,Consolas,monospace;}
+.guide{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:16px 20px;}
+.guide h3{font-size:16px;margin:16px 0 6px;color:var(--brand-primary);}
+.guide h3:first-child{margin-top:0;}
+.guide p,.guide li{font-size:14px;line-height:1.85;margin:4px 0;}
+.guide ol,.guide ul{padding-left:1.4em;margin:6px 0;}
+.guide table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;}
+.guide th,.guide td{border:1px solid var(--border-default);padding:7px 9px;text-align:left;}
+.guide th{background:var(--bg-subtle);font-weight:700;}
+.note{font-size:13px;background:var(--bg-subtle);border-left:5px solid var(--warning);
+  padding:11px 14px;border-radius:var(--r8);line-height:1.8;}
+kbd{background:var(--bg-subtle);border:1px solid var(--border-default);border-radius:4px;
+  padding:1px 6px;font-size:12px;font-family:inherit;}
+footer.foot{font-size:12px;color:var(--text-tertiary);border-top:1px solid var(--border-default);
+  padding-top:14px;line-height:1.8;}
+.printbtn{background:none;border:1px solid var(--border-default);border-radius:var(--r8);
+  padding:6px 12px;font-size:13px;color:var(--text-link);cursor:pointer;}
+@media (max-width:640px){
+  body{padding:14px 10px 44px;} h1{font-size:21px;}
+  .cv-grid{grid-template-columns:1fr;} .ctrl-grid{grid-template-columns:1fr;}
+  .stat-grid{grid-template-columns:repeat(2,1fr);}
+  #srcCv,#outCv{height:210px;}
+}
+@media print{
+  body{background:#fff;padding:0;}
+  .mode-seg,.preset-row,.sub-card,.printbtn{display:none!important;}
+  .cv-box{break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <div class="subject">高校 情報Ⅰ ／ コミュニケーションと情報デザイン・情報のデジタル化</div>
+  <h1>画像のデジタル化シミュレータ</h1>
+  <p class="lead">標本化（解像度）→ 量子化（階調）→ 符号化のしくみを、元画像とデジタル化後を並べて観察できる教材です。カメラや手持ちの画像ファイルを取り込んで実験できます。</p>
+</header>
+
+<div class="ih-head">
+  <h2 class="sec">実験パネル</h2>
+  <div class="ih-badges">
+    <span class="bdg b-teal">元画像</span>
+    <span class="bdg b-amber">デジタル化後</span>
+    <span class="bdg b-purple">画素</span>
+  </div>
+</div>
+
+<div class="mode-seg" id="srcSeg">
+  <button data-s="sample" class="on">🖼 サンプル画像</button>
+  <button data-s="cam">📷 カメラ</button>
+  <button data-s="file">📁 画像ファイル</button>
+</div>
+
+<div class="card sub-card" id="samplePanel">
+  <span class="lbl2">サンプル</span>
+  <div class="seg" id="sampleSeg">
+    <button data-k="grad" class="on">グラデーション</button>
+    <button data-k="scene">風景</button>
+    <button data-k="text">文字</button>
+    <button data-k="face">アイコン</button>
+  </div>
+</div>
+
+<div class="card sub-card" id="camPanel" style="display:none">
+  <button class="playbtn primary" id="camBtn">📷 カメラを開始</button>
+  <button class="playbtn" id="snapBtn" disabled>📸 静止画にする</button>
+  <span class="hint2" id="camInfo">停止中</span>
+</div>
+
+<div class="card sub-card" id="filePanel" style="display:none">
+  <input type="file" id="fileInp" accept="image/*">
+  <span class="hint2">画像は端末内だけで処理され、外部に送信されません</span>
+</div>
+
+<div class="cv-grid">
+  <div class="cv-box">
+    <div class="cv-cap">① 元の画像（アナログ）</div>
+    <canvas id="srcCv"></canvas>
+  </div>
+  <div class="cv-box">
+    <div class="cv-cap">② デジタル化後（標本化＋量子化）</div>
+    <canvas id="outCv"></canvas>
+  </div>
+</div>
+
+<div class="card insp" id="inspBox">
+  <b>画素を調べる</b>：②の画像をクリックすると、その画素の値・量子化の結果・2進数の符号が表示されます。
+</div>
+
+<div class="preset-row">
+  <span class="preset-label">プリセット</span>
+  <button class="pbtn" data-p="rough">粗い標本化</button>
+  <button class="pbtn" data-p="bw">白黒2値（FAX）</button>
+  <button class="pbtn" data-p="gray">グレースケール16階調</button>
+  <button class="pbtn" data-p="full">フルカラー24bit</button>
+</div>
+
+<div class="ctrl-grid">
+  <div class="card">
+    <label class="lbl">解像度（標本化の細かさ） <b id="resVal">32 × 24</b></label>
+    <input type="range" id="resRng" min="0" max="10" step="1" value="4">
+    <div class="hint">画像を何個の画素（ピクセル）に分けるか</div>
+  </div>
+  <div class="card">
+    <label class="lbl">階調ビット数（量子化） <b id="bitVal">4 bit</b></label>
+    <input type="range" id="bitRng" min="1" max="8" step="1" value="4">
+    <div class="hint">1色あたり <span id="lvlVal">16</span> 段階</div>
+  </div>
+  <div class="card">
+    <label class="lbl">色の表し方</label>
+    <div class="seg" id="modeSeg">
+      <button data-m="rgb" class="on">RGBカラー</button>
+      <button data-m="gray">グレー</button>
+      <button data-m="bw">白黒2値</button>
+    </div>
+    <div class="hint" id="modeHint">光の三原色を各色ごとに量子化</div>
+  </div>
+  <div class="card">
+    <label class="lbl">表示オプション</label>
+    <div class="toggle-col">
+      <label><input type="checkbox" id="tGrid" checked> 画素の枠線を表示</label>
+      <label><input type="checkbox" id="tNum"> 画素の値を数字で表示（グレー／白黒）</label>
+    </div>
+  </div>
+</div>
+
+<h2 class="sec">データ量の計算</h2>
+<div class="stat-grid">
+  <div class="stat s-blue"><span>総画素数</span><b id="sPx">–</b></div>
+  <div class="stat s-purple"><span>1画素のビット数</span><b id="sBpp">–</b></div>
+  <div class="stat s-teal"><span>表現できる色数</span><b id="sColors">–</b></div>
+  <div class="stat s-amber"><span>データ量（非圧縮）</span><b id="sSize">–</b></div>
+</div>
+<div class="formula" id="calcBox"></div>
+
+<div class="code-card">
+  <div class="code-title">③ 符号化されたデータ（1行目の先頭8画素）</div>
+  <div class="tbl-scroll">
+    <table class="code-tbl">
+      <thead><tr><th>座標</th><th>元の値</th><th>量子化値</th><th>2進数（符号）</th></tr></thead>
+      <tbody id="codeBody"></tbody>
+    </table>
+  </div>
+  <div class="hint">各画素の段階の番号を2進数で表すと、画像が0と1の列（デジタルデータ）になります。これが符号化です。</div>
+</div>
+
+<h2 class="sec">授業での使い方ガイド</h2>
+<div class="guide">
+  <h3>1. 導入：音のデジタル化との対応</h3>
+  <p>音のデジタル化を学習済みなら、まず対応関係を確認します。考え方はまったく同じで、対象が「時間」から「空間」に変わっただけです。</p>
+  <table>
+    <tr><th>段階</th><th>音（1次元・時間）</th><th>画像（2次元・空間）</th></tr>
+    <tr><td>標本化</td><td>標本化周波数（1秒に何回測るか）</td><td>解像度（縦横を何個の画素に分けるか）</td></tr>
+    <tr><td>量子化</td><td>量子化ビット数（振幅を何段階で表すか）</td><td>階調ビット数（明るさ・色を何段階で表すか）</td></tr>
+    <tr><td>符号化</td><td>段階の番号を2進数に</td><td>段階の番号を2進数に</td></tr>
+    <tr><td>データ量</td><td>標本化周波数 × ビット数 × 秒数</td><td>横 × 縦 × 1画素のビット数</td></tr>
+  </table>
+
+  <h3>2. 標本化：解像度を変える</h3>
+  <p>サンプル「風景」で解像度を最小（4×3）まで下げ、何が写っているか分からないことを確認します。そこから段階的に上げていくと、ある時点で急に「見える」ようになります。<strong>標本化が粗いと情報が失われる</strong>ことを体感させてください。「文字」のサンプルを使うと、文字が読めるかどうかという明確な判断基準で議論できます。</p>
+
+  <h3>3. 量子化：階調を変える</h3>
+  <p>「グラデーション」のサンプルで階調ビット数を1bitまで下げると、なめらかな色の変化が縞模様になります（トーンジャンプ）。ビット数を上げると縞が消えていきます。<strong>階調数 = 2 の ビット数 乗</strong> であることを、表示される段階数で確認します。</p>
+
+  <h3>4. 符号化：画素をクリックして調べる</h3>
+  <p>②の画像の任意の画素をクリックすると、その画素の「元の値 → 量子化値 → 2進数」が表示されます。表③と合わせて、<strong>画像が数値の集まりであり、最終的に0と1の列になる</strong>ことを確認します。グレースケールで解像度を下げ、「画素の値を数字で表示」にチェックを入れると、画像全体が数値の表であることが一目で分かります。</p>
+
+  <h3>5. 色の表し方とデータ量</h3>
+  <p>同じ解像度のまま「RGBカラー → グレー → 白黒2値」と切り替え、データ量がどう変わるか読み取らせます。</p>
+  <div class="formula">
+    データ量 ＝ 横の画素数 × 縦の画素数 × 1画素のビット数<br>
+    RGBカラー1画素 ＝ 階調ビット数 × 3（赤・緑・青）<br>
+    24bitフルカラー ＝ 2<sup>24</sup> ＝ 16,777,216色（いわゆる1,677万色）
+  </div>
+  <p>「フルカラー24bit」プリセットで色数の表示を確認させると、よく聞く「1,677万色」が計算で導けることが分かります。フルHD（1920×1080）の非圧縮データが約5.9MBになることから、<strong>なぜ画像圧縮（JPEG・PNG）が必要か</strong>という次の話題につなげられます。</p>
+
+  <h3>6. カメラ・画像ファイルを使った探究活動</h3>
+  <table>
+    <tr><th>活動</th><th>操作</th><th>気づかせたいこと</th></tr>
+    <tr><td>自分の顔をモザイクに</td><td>カメラ → 解像度を下げる</td><td>解像度と識別できる情報量の関係</td></tr>
+    <tr><td>顔が分かる限界を探す</td><td>解像度を少しずつ上げる</td><td>用途に応じた必要解像度がある</td></tr>
+    <tr><td>写真とイラストの比較</td><td>画像ファイルを読み込む</td><td>階調を減らした影響は絵柄で違う</td></tr>
+    <tr><td>文字は何画素必要か</td><td>「文字」サンプルで解像度を調整</td><td>読める／読めないの境界を数値で議論</td></tr>
+    <tr><td>データ量の見積もり</td><td>各設定でデータ量を記録</td><td>解像度2倍でデータ量4倍になる</td></tr>
+  </table>
+  <p>「解像度を2倍にするとデータ量は何倍か」は良い発問です。縦横それぞれが2倍になるため、答えは4倍です。実際にスライダーを動かして数値で確かめさせると理解が定着します。</p>
+
+  <h3>7. 操作のヒント</h3>
+  <ul>
+    <li>画素の数値表示は、グレー／白黒モードで解像度が低いときのみ表示されます</li>
+    <li>カメラ利用中に <kbd>📸 静止画にする</kbd> を押すと、その瞬間の画像で落ち着いて観察できます</li>
+    <li>白黒2値モードでは階調ビット数のスライダーは無効になります（常に1bit）</li>
+  </ul>
+
+  <div class="note">
+    <strong>運用上の注意</strong><br>
+    ・カメラを使うため、このファイルは <strong>https:// のWebサーバー（LMS等）</strong> または各端末の <strong>ローカルファイル（file://）</strong> から開いてください。http:// のサーバー上ではブラウザがカメラを許可しません。<br>
+    ・カメラを使わずサンプル画像・画像ファイルだけで学習する場合は、どの環境でも動作します。<br>
+    ・肖像権・プライバシーに配慮し、カメラ活用時は撮影範囲と扱いについて事前に指導してください。<br>
+    ・外部との通信は一切行いません。カメラ映像や読み込んだ画像は端末内でのみ処理され、保存も送信もされません。
+  </div>
+
+  <p style="margin-top:14px"><button class="printbtn" onclick="window.print()">🖨 このガイドを印刷する</button></p>
+</div>
+
+<footer class="foot">
+  画像のデジタル化シミュレータ ／ 高校「情報Ⅰ」用Web教材<br>
+  1ファイル完結・外部ライブラリ不使用・通信なし。授業内での複製・改変・配布は自由です。<br>
+  動作環境： Google Chrome / Microsoft Edge / Safari / Firefox の最新版（Canvas 対応ブラウザ）
+</footer>
+
+</div>
+<script>
+(function(){
+"use strict";
+/* =========================================================
+   画像のデジタル化シミュレータ （高校 情報Ⅰ Web教材）
+   1ファイル完結・外部ライブラリ不使用・通信なし
+   ========================================================= */
+
+var RES=[4,8,12,16,24,32,48,64,96,128,192];
+var st={src:'sample',sample:'grad',res:4,bits:4,mode:'rgb',grid:true,num:false,sel:null};
+
+var WKW=320,WKH=240;
+var work=document.createElement('canvas');work.width=WKW;work.height=WKH;
+var wg=work.getContext('2d',{willReadFrequently:true});
+var small=document.createElement('canvas');
+var sg=small.getContext('2d',{willReadFrequently:true});
+var srcCv=document.getElementById('srcCv'),sc=srcCv.getContext('2d');
+var outCv=document.getElementById('outCv'),oc=outCv.getContext('2d');
+var lastSmall=null,lastW=0,lastH=0;
+
+function $(i){return document.getElementById(i);}
+function nf(n){return n.toLocaleString('en-US');}
+function fmtBytes(b){
+  return b<1024?Math.round(b)+' B':(b<1048576?(b/1024).toFixed(1)+' KB':(b/1048576).toFixed(2)+' MB');
+}
+
+/* ---------- サンプル画像の描画 ---------- */
+function drawSample(k){
+  var g=wg,W=WKW,H=WKH;
+  g.setTransform(1,0,0,1,0,0);
+  g.clearRect(0,0,W,H);
+  if(k==='grad'){
+    var lg=g.createLinearGradient(0,0,W,0);
+    lg.addColorStop(0,'#ff2d2d');lg.addColorStop(.30,'#ffd400');
+    lg.addColorStop(.60,'#00b3ff');lg.addColorStop(1,'#8b3dff');
+    g.fillStyle=lg;g.fillRect(0,0,W,H*0.55);
+    var lg2=g.createLinearGradient(0,H*0.55,0,H);
+    lg2.addColorStop(0,'#ffffff');lg2.addColorStop(1,'#101010');
+    g.fillStyle=lg2;g.fillRect(0,H*0.55,W,H*0.45);
+  }else if(k==='scene'){
+    var sky=g.createLinearGradient(0,0,0,H*0.62);
+    sky.addColorStop(0,'#1e6fd9');sky.addColorStop(1,'#bfe6ff');
+    g.fillStyle=sky;g.fillRect(0,0,W,H*0.62);
+    g.fillStyle='#ffe14d';g.beginPath();g.arc(W*0.78,H*0.20,26,0,Math.PI*2);g.fill();
+    g.fillStyle='#3b7d4f';g.beginPath();
+    g.moveTo(0,H*0.62);g.lineTo(W*0.30,H*0.22);g.lineTo(W*0.62,H*0.62);g.closePath();g.fill();
+    g.fillStyle='#5aa06c';g.beginPath();
+    g.moveTo(W*0.40,H*0.62);g.lineTo(W*0.68,H*0.32);g.lineTo(W,H*0.62);g.closePath();g.fill();
+    g.fillStyle='#6dbf5e';g.fillRect(0,H*0.62,W,H*0.38);
+    g.fillStyle='#f5f1e6';g.fillRect(W*0.12,H*0.68,64,44);
+    g.fillStyle='#c0453b';g.beginPath();
+    g.moveTo(W*0.12-8,H*0.68);g.lineTo(W*0.12+32,H*0.60);g.lineTo(W*0.12+72,H*0.68);g.closePath();g.fill();
+    g.fillStyle='#7ec8f0';g.fillRect(W*0.12+12,H*0.72,18,16);
+  }else if(k==='text'){
+    g.fillStyle='#ffffff';g.fillRect(0,0,W,H);
+    g.fillStyle='#101820';g.textAlign='center';
+    g.font='bold 76px sans-serif';g.fillText('情報Ⅰ',W/2,H*0.42);
+    g.font='bold 26px sans-serif';g.fillText('デジタル化',W/2,H*0.63);
+    g.strokeStyle='#101820';
+    for(var i=0;i<6;i++){
+      g.lineWidth=(i+1)*0.6;
+      g.beginPath();g.moveTo(30,H*0.76+i*9);g.lineTo(W-30,H*0.76+i*9);g.stroke();
+    }
+  }else{
+    g.fillStyle='#fff3d6';g.fillRect(0,0,W,H);
+    g.fillStyle='#ffcf5c';g.beginPath();g.arc(W/2,H/2,78,0,Math.PI*2);g.fill();
+    g.fillStyle='#3a2b16';
+    g.beginPath();g.arc(W/2-28,H/2-18,11,0,Math.PI*2);g.fill();
+    g.beginPath();g.arc(W/2+28,H/2-18,11,0,Math.PI*2);g.fill();
+    g.strokeStyle='#3a2b16';g.lineWidth=7;g.lineCap='round';
+    g.beginPath();g.arc(W/2,H/2+8,38,0.3,Math.PI-0.3);g.stroke();
+    g.fillStyle='#ff8fa3';
+    g.beginPath();g.arc(W/2-52,H/2+16,13,0,Math.PI*2);g.fill();
+    g.beginPath();g.arc(W/2+52,H/2+16,13,0,Math.PI*2);g.fill();
+  }
+  render();
+}
+
+/* ---------- 量子化 ---------- */
+function qv(v,L){var i=Math.round(v/255*(L-1));if(i<0)i=0;if(i>L-1)i=L-1;return i;}
+function bpp(){return st.mode==='rgb'?st.bits*3:(st.mode==='gray'?st.bits:1);}
+function colorCount(){
+  return st.mode==='rgb'?Math.pow(2,st.bits*3):(st.mode==='gray'?Math.pow(2,st.bits):2);
+}
+function lum(r,g,b){return 0.299*r+0.587*g+0.114*b;}
+function bin(n,w){var s=n.toString(2);while(s.length<w)s='0'+s;return s;}
+
+function pxInfo(d,i){
+  var L=Math.pow(2,st.bits),r=d[i],g=d[i+1],b=d[i+2];
+  if(st.mode==='rgb'){
+    var qr=qv(r,L),qg=qv(g,L),qb=qv(b,L);
+    return {org:'R'+r+' G'+g+' B'+b,
+      q:'('+qr+','+qg+','+qb+')',
+      bin:bin(qr,st.bits)+' '+bin(qg,st.bits)+' '+bin(qb,st.bits),
+      css:'rgb('+Math.round(qr/(L-1)*255)+','+Math.round(qg/(L-1)*255)+','+Math.round(qb/(L-1)*255)+')'};
+  }
+  var y=Math.round(lum(r,g,b));
+  if(st.mode==='gray'){
+    var qy=qv(y,L),vv=Math.round(qy/(L-1)*255);
+    return {org:'明るさ '+y,q:qy+' / '+(L-1),bin:bin(qy,st.bits),
+      css:'rgb('+vv+','+vv+','+vv+')'};
+  }
+  var bw=y>=128?1:0;
+  return {org:'明るさ '+y,q:bw+' / 1',bin:String(bw),css:bw?'#ffffff':'#000000'};
+}
+
+/* ---------- 描画 ---------- */
+function fit(el,cx){
+  var dpr=window.devicePixelRatio||1,w=el.clientWidth,h=el.clientHeight;
+  el.width=Math.round(w*dpr);el.height=Math.round(h*dpr);
+  cx.setTransform(dpr,0,0,dpr,0,0);return {w:w,h:h};
+}
+function box(W,H){
+  var s=Math.min(W/WKW,H/WKH),w=WKW*s,h=WKH*s;
+  return {x:(W-w)/2,y:(H-h)/2,w:w,h:h};
+}
+
+function render(){
+  /* ① 元画像 */
+  var d1=fit(srcCv,sc);
+  sc.fillStyle='#12191c';sc.fillRect(0,0,d1.w,d1.h);
+  var b1=box(d1.w,d1.h);
+  sc.imageSmoothingEnabled=true;
+  sc.drawImage(work,b1.x,b1.y,b1.w,b1.h);
+
+  /* ② 標本化＋量子化 */
+  var W=RES[st.res],H=Math.round(W*3/4);
+  small.width=W;small.height=H;
+  sg.imageSmoothingEnabled=true;
+  sg.clearRect(0,0,W,H);
+  sg.drawImage(work,0,0,W,H);
+
+  var img=sg.getImageData(0,0,W,H),d=img.data,L=Math.pow(2,st.bits);
+  for(var i=0;i<d.length;i+=4){
+    if(st.mode==='rgb'){
+      d[i]  =Math.round(qv(d[i],L)/(L-1)*255);
+      d[i+1]=Math.round(qv(d[i+1],L)/(L-1)*255);
+      d[i+2]=Math.round(qv(d[i+2],L)/(L-1)*255);
+    }else{
+      var y=lum(d[i],d[i+1],d[i+2]),v;
+      if(st.mode==='gray')v=Math.round(qv(y,L)/(L-1)*255);
+      else v=y>=128?255:0;
+      d[i]=d[i+1]=d[i+2]=v;
+    }
+    d[i+3]=255;
+  }
+  lastSmall=sg.createImageData(W,H);
+  lastSmall.data.set(d);
+  lastW=W;lastH=H;
+  sg.putImageData(img,0,0);
+
+  var d2=fit(outCv,oc);
+  oc.fillStyle='#12191c';oc.fillRect(0,0,d2.w,d2.h);
+  var b2=box(d2.w,d2.h);
+  oc.imageSmoothingEnabled=false;
+  oc.drawImage(small,b2.x,b2.y,b2.w,b2.h);
+
+  var cw=b2.w/W,chh=b2.h/H;
+  if(st.grid&&cw>=4){
+    oc.strokeStyle='rgba(255,255,255,.28)';
+    oc.lineWidth=Math.min(1,cw/8);
+    for(var gx=0;gx<=W;gx++){
+      oc.beginPath();oc.moveTo(b2.x+gx*cw,b2.y);oc.lineTo(b2.x+gx*cw,b2.y+b2.h);oc.stroke();}
+    for(var gy=0;gy<=H;gy++){
+      oc.beginPath();oc.moveTo(b2.x,b2.y+gy*chh);oc.lineTo(b2.x+b2.w,b2.y+gy*chh);oc.stroke();}
+  }
+  if(st.num&&cw>=16&&st.mode!=='rgb'){
+    oc.font=Math.floor(Math.min(cw,chh)*0.42)+'px sans-serif';
+    oc.textAlign='center';oc.textBaseline='middle';
+    for(var yy=0;yy<H;yy++)for(var xx=0;xx<W;xx++){
+      var idx=(yy*W+xx)*4,vv=lastSmall.data[idx];
+      var q=st.mode==='gray'?qv(vv,L):(vv>=128?1:0);
+      oc.fillStyle=vv>128?'#101820':'#f2f7f8';
+      oc.fillText(String(q),b2.x+(xx+0.5)*cw,b2.y+(yy+0.5)*chh);
+    }
+  }
+  if(st.sel&&st.sel.x<W&&st.sel.y<H){
+    oc.strokeStyle='#FF7A6B';oc.lineWidth=2;
+    oc.strokeRect(b2.x+st.sel.x*cw,b2.y+st.sel.y*chh,cw,chh);
+  }
+  outCv._box=b2;outCv._cw=cw;outCv._ch=chh;
+  updateInfo();
+}
+
+/* ---------- 数値・表 ---------- */
+function updateInfo(){
+  var W=lastW,H=lastH,px=W*H,bp=bpp(),L=Math.pow(2,st.bits);
+  $('resVal').textContent=W+' × '+H;
+  $('bitVal').textContent=st.bits+' bit';
+  $('lvlVal').textContent=nf(L);
+  $('sPx').textContent=nf(px)+' 画素';
+  $('sBpp').textContent=bp+' bit';
+  $('sColors').textContent=nf(colorCount())+' 色';
+  var bits=px*bp,bytes=bits/8;
+  $('sSize').textContent=fmtBytes(bytes);
+
+  var fhd=1920*1080*24/8/1048576;
+  $('calcBox').innerHTML=
+    'データ量 ＝ 横の画素数 × 縦の画素数 × 1画素のビット数<br>'+
+    '　＝ '+W+' × '+H+' × '+bp+' ＝ <b>'+nf(bits)+' bit</b> ＝ '+nf(Math.round(bytes))+
+    ' バイト（約 '+fmtBytes(bytes)+'）<br>'+
+    '<span style="opacity:.75">参考：フルHD 1920×1080 の24bitフルカラーなら約 '+fhd.toFixed(1)+' MB（非圧縮）</span>';
+
+  var html='';
+  if(lastSmall){
+    var n=Math.min(8,W);
+    for(var x=0;x<n;x++){
+      var info=pxInfo(lastSmall.data,x*4);
+      html+='<tr><td>('+x+', 0)</td><td>'+info.org+'</td><td>'+info.q+
+            '</td><td class="bin">'+info.bin+'</td></tr>';
+    }
+  }
+  $('codeBody').innerHTML=html;
+  $('modeHint').textContent=st.mode==='rgb'?'光の三原色を各色ごとに量子化':
+    (st.mode==='gray'?'明るさだけを量子化':'明るさを2段階に（常に1bit）');
+}
+
+/* ---------- 画素クリック ---------- */
+outCv.addEventListener('click',function(e){
+  if(!lastSmall||!outCv._box)return;
+  var r=outCv.getBoundingClientRect(),b=outCv._box;
+  var px=e.clientX-r.left-b.x,py=e.clientY-r.top-b.y;
+  if(px<0||py<0||px>b.w||py>b.h)return;
+  var x=Math.floor(px/outCv._cw),y=Math.floor(py/outCv._ch);
+  if(x<0||y<0||x>=lastW||y>=lastH)return;
+  st.sel={x:x,y:y};
+  var info=pxInfo(lastSmall.data,(y*lastW+x)*4);
+  $('inspBox').innerHTML='<b>座標 ('+x+', '+y+')</b> の画素'+
+    '<span class="swatch" style="background:'+info.css+'"></span>'+
+    '　元の値: '+info.org+'　→　量子化: '+info.q+
+    '　→　符号: <span class="mono">'+info.bin+'</span>';
+  render();
+});
+
+/* ---------- カメラ ---------- */
+var video=null,camStream=null,camRaf=null;
+function stopCam(){
+  if(camStream){camStream.getTracks().forEach(function(t){t.stop();});camStream=null;}
+  if(camRaf){cancelAnimationFrame(camRaf);camRaf=null;}
+  $('camBtn').textContent='📷 カメラを開始';
+  $('camBtn').classList.add('primary');
+  $('snapBtn').disabled=true;
+  $('camInfo').textContent='停止中';
+}
+$('camBtn').addEventListener('click',function(){
+  if(camStream){stopCam();return;}
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    $('camInfo').textContent='この環境ではカメラを使えません（https:// または file:// で開いてください）';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{width:640,height:480},audio:false}).then(function(s){
+    camStream=s;
+    if(!video){video=document.createElement('video');video.playsInline=true;video.muted=true;}
+    video.srcObject=s;video.play();
+    $('camBtn').textContent='■ カメラを停止';
+    $('camBtn').classList.remove('primary');
+    $('snapBtn').disabled=false;
+    $('camInfo').textContent='取り込み中';
+    (function tick(){
+      if(!camStream)return;
+      if(video.videoWidth){
+        var vr=video.videoWidth/video.videoHeight,tr=WKW/WKH,sw,sh,sx,sy;
+        if(vr>tr){sh=video.videoHeight;sw=sh*tr;sx=(video.videoWidth-sw)/2;sy=0;}
+        else{sw=video.videoWidth;sh=sw/tr;sx=0;sy=(video.videoHeight-sh)/2;}
+        wg.drawImage(video,sx,sy,sw,sh,0,0,WKW,WKH);
+        render();
+      }
+      camRaf=requestAnimationFrame(tick);
+    })();
+  }).catch(function(err){
+    $('camInfo').textContent='カメラを使用できません（'+(err&&err.name?err.name:'エラー')+'）';
+  });
+});
+$('snapBtn').addEventListener('click',function(){
+  if(camRaf){cancelAnimationFrame(camRaf);camRaf=null;}
+  $('camInfo').textContent='静止画にしました（再開するにはカメラを開始し直す）';
+});
+
+/* ---------- 画像ファイル ---------- */
+$('fileInp').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  var rd=new FileReader();
+  rd.onload=function(ev){
+    var im=new Image();
+    im.onload=function(){
+      var ir=im.width/im.height,tr=WKW/WKH,sw,sh,sx,sy;
+      if(ir>tr){sh=im.height;sw=sh*tr;sx=(im.width-sw)/2;sy=0;}
+      else{sw=im.width;sh=sw/tr;sx=0;sy=(im.height-sh)/2;}
+      wg.fillStyle='#ffffff';wg.fillRect(0,0,WKW,WKH);
+      wg.drawImage(im,sx,sy,sw,sh,0,0,WKW,WKH);
+      st.sel=null;render();
+    };
+    im.src=ev.target.result;
+  };
+  rd.readAsDataURL(f);
+});
+
+/* ---------- UI ---------- */
+function segBind(sel,fn){
+  var b=document.querySelectorAll(sel+' button');
+  Array.prototype.forEach.call(b,function(x){
+    x.addEventListener('click',function(){
+      Array.prototype.forEach.call(b,function(o){o.classList.remove('on');});
+      x.classList.add('on');fn(x);
+    });
+  });
+}
+segBind('#srcSeg',function(b){
+  st.src=b.dataset.s;st.sel=null;
+  $('samplePanel').style.display=st.src==='sample'?'flex':'none';
+  $('camPanel').style.display=st.src==='cam'?'flex':'none';
+  $('filePanel').style.display=st.src==='file'?'flex':'none';
+  if(st.src!=='cam')stopCam();
+  if(st.src==='sample')drawSample(st.sample);else render();
+});
+segBind('#sampleSeg',function(b){st.sample=b.dataset.k;st.sel=null;drawSample(st.sample);});
+segBind('#modeSeg',function(b){
+  st.mode=b.dataset.m;st.sel=null;
+  $('bitRng').disabled=(st.mode==='bw');
+  render();
+});
+$('resRng').addEventListener('input',function(e){st.res=+e.target.value;st.sel=null;render();});
+$('bitRng').addEventListener('input',function(e){st.bits=+e.target.value;st.sel=null;render();});
+$('tGrid').addEventListener('change',function(e){st.grid=e.target.checked;render();});
+$('tNum').addEventListener('change',function(e){st.num=e.target.checked;render();});
+
+Array.prototype.forEach.call(document.querySelectorAll('.pbtn'),function(b){
+  b.addEventListener('click',function(){
+    var p=b.dataset.p;
+    if(p==='rough'){st.res=1;st.bits=2;st.mode='rgb';}
+    if(p==='bw'){st.res=5;st.bits=1;st.mode='bw';}
+    if(p==='gray'){st.res=7;st.bits=4;st.mode='gray';}
+    if(p==='full'){st.res=10;st.bits=8;st.mode='rgb';}
+    $('resRng').value=st.res;
+    $('bitRng').value=st.bits;
+    $('bitRng').disabled=(st.mode==='bw');
+    Array.prototype.forEach.call(document.querySelectorAll('#modeSeg button'),function(o){
+      if(o.dataset.m===st.mode)o.classList.add('on');else o.classList.remove('on');
+    });
+    st.sel=null;render();
+  });
+});
+
+window.addEventListener('resize',render);
+drawSample('grad');
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+</body>
+</html>
