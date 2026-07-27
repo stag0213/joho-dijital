@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>音のデジタル化オシロスコープ＋FFT ｜ 高校情報Ⅰ Web教材</title>
+<meta name="description" content="高校「情報Ⅰ」音のデジタル化（標本化・量子化・符号化）を、オシロスコープとFFTスペクトルで体験できるWeb教材。マイク入力対応。">
+<style>
+:root{
+  --text-primary:#1a2b28; --text-secondary:#5a6b67; --text-tertiary:#8a9995;
+  --text-link:#0a6ea8; --text-on-brand:#ffffff;
+  --bg-page:#f4f7f6; --bg-surface:#ffffff; --bg-subtle:#eef3f1;
+  --brand-primary:#12776b; --brand-secondary:#0f7fff;
+  --border-default:#d5e0dd; --border-strong:#9fb4af; --border-subtle:#e8efed;
+  --success:#10b981; --warning:#f59e0b; --error:#ef4444;
+  --scope-bg:#0b1a17;
+  --r8:8px; --r12:12px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --text-primary:#e6f0ee; --text-secondary:#a7b9b5; --text-tertiary:#7d8f8b;
+    --text-link:#6cc6ff; --text-on-brand:#052a26;
+    --bg-page:#0e1614; --bg-surface:#16211f; --bg-subtle:#1d2b28;
+    --brand-primary:#3ddbc4; --brand-secondary:#5ab0ff;
+    --border-default:#2a3b38; --border-strong:#496460; --border-subtle:#22302d;
+  }
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--bg-page); color:var(--text-primary);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,-apple-system,sans-serif;
+  font-size:16px; line-height:1.7; padding:20px 16px 60px;
+}
+.page{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+header.top{border-bottom:2px solid var(--brand-primary);padding-bottom:14px;}
+.subject{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--brand-primary);}
+h1{font-size:26px;margin:6px 0 4px;line-height:1.35;}
+.lead{font-size:14px;color:var(--text-secondary);margin:0;}
+h2.sec{font-size:19px;margin:8px 0 0;padding-left:11px;border-left:5px solid var(--brand-primary);}
+.osc-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;}
+.osc-badges{display:flex;gap:8px;flex-wrap:wrap;}
+.bdg{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid;font-weight:700;}
+.b-teal{color:#0d7d6e;border-color:#3DE0C8;background:rgba(61,224,200,.13);}
+.b-amber{color:#8a5a00;border-color:#FFB84D;background:rgba(255,184,77,.15);}
+.b-coral{color:#a63b2e;border-color:#FF7A6B;background:rgba(255,122,107,.13);}
+@media (prefers-color-scheme:dark){
+  .b-teal{color:#7ff0dd;} .b-amber{color:#ffd79a;} .b-coral{color:#ffb0a5;}
+}
+.mode-seg{display:flex;gap:8px;}
+.mode-seg button{flex:1;min-height:46px;font-size:15px;font-weight:700;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;}
+.mode-seg button.on{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);}
+.scope-box{border:1px solid var(--border-default);border-radius:var(--r12);overflow:hidden;background:var(--scope-bg);}
+.scope-cap{font-size:12px;color:rgba(190,240,225,.85);padding:8px 12px 0;font-weight:700;}
+#oscCv{display:block;width:100%;height:290px;}
+#fftCv{display:block;width:100%;height:240px;}
+.warn{padding:12px 16px;border-radius:var(--r8);border:1px solid var(--border-default);
+  background:var(--bg-subtle);font-size:14px;line-height:1.75;}
+.warn.bad{border-color:var(--warning);border-left-width:5px;}
+.warn.ok{border-color:var(--success);border-left-width:5px;}
+.warn.err{border-color:var(--error);border-left-width:5px;}
+.card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:13px 16px;}
+.fft-card,.mic-card{display:flex;flex-direction:column;gap:12px;}
+.mic-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+.meter{flex:1;min-width:100px;height:11px;border-radius:999px;background:var(--bg-subtle);
+  border:1px solid var(--border-subtle);overflow:hidden;}
+.meter-bar{height:100%;width:0%;background:var(--success);transition:width .06s linear;}
+.mic-info{font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums;}
+.lbl2{font-size:14px;color:var(--text-secondary);white-space:nowrap;}
+.lbl2 b{color:var(--brand-secondary);}
+.chk{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px;cursor:pointer;}
+input[type=range]{width:100%;height:28px;accent-color:var(--brand-secondary);cursor:pointer;}
+input[type=range].short{width:130px;}
+.peak-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.peak{border:1px solid;border-radius:var(--r8);padding:8px 11px;display:flex;flex-direction:column;gap:2px;}
+.peak span{font-size:12px;opacity:.85;} .peak b{font-size:14px;font-variant-numeric:tabular-nums;}
+.p-teal{border-color:#3DE0C8;background:rgba(61,224,200,.09);}
+.p-amber{border-color:#FFB84D;background:rgba(255,184,77,.10);}
+.p-purple{border-color:#a78bfa;background:rgba(167,139,250,.10);}
+.preset-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.preset-label{font-size:12px;color:var(--text-secondary);}
+.pbtn{min-height:38px;padding:6px 13px;font-size:14px;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-primary);cursor:pointer;}
+.pbtn:hover{background:var(--bg-subtle);border-color:var(--border-strong);}
+.ctrl-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.lbl{display:flex;justify-content:space-between;align-items:center;font-size:14px;
+  color:var(--text-secondary);margin-bottom:8px;gap:8px;}
+.lbl b{font-size:16px;color:var(--brand-secondary);font-variant-numeric:tabular-nums;}
+.hint{font-size:12px;color:var(--text-tertiary);margin-top:4px;line-height:1.55;}
+.hint2{font-size:12px;color:var(--text-tertiary);}
+.seg{display:flex;gap:6px;}
+.seg2{margin-top:8px;}
+.seg button{flex:1;min-height:36px;padding:0 8px;font-size:14px;border-radius:var(--r8);
+  border:1px solid var(--border-default);background:var(--bg-surface);color:var(--text-secondary);cursor:pointer;}
+.seg button.on{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);font-weight:700;}
+.toggle-row{display:flex;flex-wrap:wrap;gap:12px 22px;font-size:14px;color:var(--text-secondary);}
+.toggle-row label{display:flex;align-items:center;gap:6px;cursor:pointer;min-height:30px;}
+.play-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.playbtn{min-height:46px;padding:0 17px;border-radius:var(--r8);border:1px solid var(--border-default);
+  background:var(--bg-surface);color:var(--text-primary);font-size:14px;font-weight:700;cursor:pointer;}
+.playbtn.primary{background:var(--brand-primary);color:var(--text-on-brand);border-color:var(--brand-primary);}
+.playbtn:hover{opacity:.88;}
+.playbtn:disabled{opacity:.42;cursor:not-allowed;}
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.stat{border:1px solid;border-radius:var(--r8);padding:12px;display:flex;flex-direction:column;gap:4px;}
+.stat span{font-size:12px;opacity:.85;} .stat b{font-size:16px;font-variant-numeric:tabular-nums;}
+.s-blue{border-color:#5ab0ff;background:rgba(90,176,255,.10);}
+.s-purple{border-color:#a78bfa;background:rgba(167,139,250,.10);}
+.s-teal{border-color:#3DE0C8;background:rgba(61,224,200,.10);}
+.s-amber{border-color:#FFB84D;background:rgba(255,184,77,.10);}
+.code-card{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:16px;}
+.code-title{font-size:17px;font-weight:700;margin-bottom:12px;}
+.tbl-scroll{overflow-x:auto;}
+.code-tbl{width:100%;border-collapse:collapse;font-size:14px;font-variant-numeric:tabular-nums;}
+.code-tbl th{text-align:right;padding:7px 9px;border-bottom:2px solid var(--border-default);
+  color:var(--text-secondary);font-weight:700;font-size:12px;white-space:nowrap;}
+.code-tbl td{text-align:right;padding:7px 9px;border-bottom:1px solid var(--border-subtle);white-space:nowrap;}
+.code-tbl td.bin{color:var(--brand-secondary);font-weight:700;letter-spacing:.07em;font-family:ui-monospace,Menlo,Consolas,monospace;}
+.guide{background:var(--bg-surface);border:1px solid var(--border-default);border-radius:var(--r12);padding:16px 20px;}
+.guide h3{font-size:16px;margin:16px 0 6px;color:var(--brand-primary);}
+.guide h3:first-child{margin-top:0;}
+.guide p,.guide li{font-size:14px;line-height:1.85;margin:4px 0;}
+.guide ol,.guide ul{padding-left:1.4em;margin:6px 0;}
+.guide table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0;}
+.guide th,.guide td{border:1px solid var(--border-default);padding:7px 9px;text-align:left;}
+.guide th{background:var(--bg-subtle);font-weight:700;}
+.note{font-size:13px;background:var(--bg-subtle);border-left:5px solid var(--warning);
+  padding:11px 14px;border-radius:var(--r8);line-height:1.8;}
+kbd{background:var(--bg-subtle);border:1px solid var(--border-default);border-radius:4px;
+  padding:1px 6px;font-size:12px;font-family:inherit;}
+.formula{background:var(--bg-subtle);border-radius:var(--r8);padding:11px 14px;font-size:14px;
+  line-height:2;font-variant-numeric:tabular-nums;}
+footer.foot{font-size:12px;color:var(--text-tertiary);border-top:1px solid var(--border-default);
+  padding-top:14px;line-height:1.8;}
+.printbtn{background:none;border:1px solid var(--border-default);border-radius:var(--r8);
+  padding:6px 12px;font-size:13px;color:var(--text-link);cursor:pointer;}
+@media (max-width:620px){
+  body{padding:14px 10px 44px;} h1{font-size:21px;}
+  .ctrl-grid{grid-template-columns:1fr;} .stat-grid{grid-template-columns:repeat(2,1fr);}
+  .peak-row{grid-template-columns:1fr;} #oscCv{height:230px;} #fftCv{height:200px;}
+}
+@media print{
+  body{background:#fff;padding:0;} .mode-seg,.preset-row,.play-row,.mic-card,.printbtn{display:none!important;}
+  .scope-box{break-inside:avoid;}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="top">
+  <div class="subject">高校 情報Ⅰ ／ コミュニケーションと情報デザイン・情報のデジタル化</div>
+  <h1>音のデジタル化オシロスコープ ＋ FFT スペクトル</h1>
+  <p class="lead">標本化（サンプリング）→ 量子化 → 符号化のしくみを、波形と周波数の両面から観察できる教材です。マイクから自分の声を取り込んで実験できます。</p>
+</header>
+
+<div class="osc-head">
+  <h2 class="sec">実験パネル</h2>
+  <div class="osc-badges">
+    <span class="bdg b-teal">アナログ波形</span>
+    <span class="bdg b-amber">量子化後の波形</span>
+    <span class="bdg b-coral">量子化誤差</span>
+  </div>
+</div>
+
+<div class="mode-seg" id="srcSeg">
+  <button data-s="sim" class="on">🎛 シミュレーション（発生させた音）</button>
+  <button data-s="mic">🎤 マイク入力（実際の音）</button>
+</div>
+
+<div class="scope-box">
+  <div class="scope-cap">① 波形（時間領域）― オシロスコープ</div>
+  <canvas id="oscCv"></canvas>
+</div>
+
+<div class="scope-box" id="fftBox">
+  <div class="scope-cap">② 周波数スペクトル（周波数領域）― FFT</div>
+  <canvas id="fftCv"></canvas>
+</div>
+
+<div class="card fft-card">
+  <div class="mic-row">
+    <label class="chk"><input type="checkbox" id="fShow" checked> スペクトルを表示</label>
+    <label class="chk"><input type="checkbox" id="fAna" checked> アナログの成分</label>
+    <label class="chk"><input type="checkbox" id="fDig" checked> デジタル化後の成分</label>
+    <label class="chk"><input type="checkbox" id="fNyq" checked> ナイキスト周波数の線</label>
+  </div>
+  <div class="mic-row">
+    <span class="lbl2">表示範囲</span>
+    <div class="seg" id="rangeSeg">
+      <button data-r="2000">2kHz</button>
+      <button data-r="5000" class="on">5kHz</button>
+      <button data-r="10000">10kHz</button>
+      <button data-r="22050">22kHz</button>
+    </div>
+    <span class="lbl2">縦軸</span>
+    <div class="seg" id="scaleSeg">
+      <button data-y="db" class="on">dB</button>
+      <button data-y="lin">振幅</button>
+    </div>
+  </div>
+  <div class="peak-row">
+    <div class="peak p-teal"><span>アナログの主成分</span><b id="pkA">–</b></div>
+    <div class="peak p-amber"><span>デジタル化後の主成分</span><b id="pkD">–</b></div>
+    <div class="peak p-purple"><span>ナイキスト周波数</span><b id="pkN">–</b></div>
+  </div>
+</div>
+
+<div id="warnBox" class="warn"></div>
+
+<div class="card mic-card" id="micPanel" style="display:none">
+  <div class="mic-row">
+    <button class="playbtn primary" id="micBtn">🎤 マイクを開始</button>
+    <button class="playbtn" id="freezeBtn" disabled>⏸ 波形を静止</button>
+    <div class="meter"><div class="meter-bar" id="meterBar"></div></div>
+    <span class="mic-info" id="micInfo">停止中</span>
+  </div>
+  <div class="mic-row">
+    <label class="lbl2">表示倍率 <b id="gVal">×3</b></label>
+    <input type="range" id="gRng" min="1" max="20" step="1" value="3" class="short">
+    <label class="chk"><input type="checkbox" id="rawChk"> ノイズ抑制をオフにする（波形観察におすすめ）</label>
+  </div>
+  <div class="mic-row">
+    <button class="playbtn" id="recBtn" disabled>⏺ 1.5秒録音</button>
+    <button class="playbtn" id="recOrig" disabled>▶ 録音（元の音）</button>
+    <button class="playbtn" id="recDig" disabled>▶ 録音（デジタル化）</button>
+    <span class="hint2" id="recInfo">「あー」と声を出しながら録音すると比較しやすいです</span>
+  </div>
+</div>
+
+<div class="preset-row">
+  <span class="preset-label">プリセット</span>
+  <button class="pbtn" data-p="rough">粗いデジタル化</button>
+  <button class="pbtn" data-p="tel">電話 8kHz/8bit</button>
+  <button class="pbtn" data-p="cd">CD 44.1kHz/16bit</button>
+  <button class="pbtn" data-p="alias">エイリアシング</button>
+</div>
+
+<div class="ctrl-grid">
+  <div class="card" id="simCard">
+    <label class="lbl">元の音の周波数 <b id="fVal">200 Hz</b></label>
+    <input type="range" id="fRng" min="100" max="4000" step="20" value="200">
+    <div class="seg seg2" id="waveSeg">
+      <button data-w="sine" class="on">サイン波</button>
+      <button data-w="voice">合成波</button>
+      <button data-w="tri">三角波</button>
+    </div>
+  </div>
+  <div class="card">
+    <label class="lbl">標本化周波数 <b id="fsVal">2,000 Hz</b></label>
+    <input type="range" id="fsRng" min="0" max="7" step="1" value="2">
+    <div class="hint">1秒間に音の大きさを測る回数（サンプリング）</div>
+  </div>
+  <div class="card">
+    <label class="lbl">量子化ビット数 <b id="bVal">3 bit</b></label>
+    <input type="range" id="bRng" min="1" max="16" step="1" value="3">
+    <div class="hint">段階数 = <span id="lvlVal">8</span> 段階</div>
+  </div>
+  <div class="card">
+    <label class="lbl">表示時間 / チャンネル</label>
+    <div class="seg" id="winSeg">
+      <button data-ms="5">5ms</button>
+      <button data-ms="10" class="on">10ms</button>
+      <button data-ms="20">20ms</button>
+      <button data-ms="50">50ms</button>
+    </div>
+    <div class="seg seg2" id="chSeg">
+      <button data-c="1" class="on">モノラル</button>
+      <button data-c="2">ステレオ</button>
+    </div>
+  </div>
+</div>
+
+<div class="toggle-row">
+  <label><input type="checkbox" id="tAnalog" checked> アナログ波形</label>
+  <label><input type="checkbox" id="tDots" checked> 標本点</label>
+  <label><input type="checkbox" id="tStep" checked> 量子化（階段）波形</label>
+  <label><input type="checkbox" id="tErr"> 量子化誤差</label>
+  <label><input type="checkbox" id="tLvl" checked> 量子化目盛</label>
+</div>
+
+<div class="play-row" id="simPlayRow">
+  <button class="playbtn primary" id="pOrig">▶ 元の音を聞く</button>
+  <button class="playbtn" id="pDig">▶ デジタル化した音を聞く</button>
+  <span class="hint2">※音量に注意してください（約1秒鳴ります）</span>
+</div>
+
+<h2 class="sec">データ量の計算</h2>
+<div class="stat-grid">
+  <div class="stat s-blue"><span>標本化周期</span><b id="sPeriod">–</b></div>
+  <div class="stat s-purple"><span>量子化段階数</span><b id="sLevels">–</b></div>
+  <div class="stat s-teal"><span>ビットレート</span><b id="sRate">–</b></div>
+  <div class="stat s-amber"><span>1分間のデータ量</span><b id="sSize">–</b></div>
+</div>
+<div class="formula" id="calcBox"></div>
+
+<div class="code-card">
+  <div class="code-title">③ 符号化されたデータ（先頭8サンプル）</div>
+  <div class="tbl-scroll">
+    <table class="code-tbl">
+      <thead><tr><th>n</th><th>時刻</th><th>標本値</th><th>量子化値</th><th>2進数（符号）</th></tr></thead>
+      <tbody id="codeBody"></tbody>
+    </table>
+  </div>
+  <div class="hint">量子化した段階の番号を2進数で表すと、音が0と1の列（デジタルデータ）になります。これが符号化です。</div>
+</div>
+
+<h2 class="sec">授業での使い方ガイド</h2>
+<div class="guide">
+  <h3>1. 導入：アナログとデジタルの違い</h3>
+  <p>初期状態（200Hz・2,000Hz・3bit）で①を見せ、なめらかな緑の線（アナログ）と、階段状のオレンジの線（デジタル）を比較させます。「デジタルはとびとびの値しか持てない」ことを確認します。白い点が<strong>標本点</strong>、横の点線が<strong>量子化の段階</strong>です。</p>
+
+  <h3>2. 標本化：点の間隔を変える</h3>
+  <p>「標本化周波数」を上げると白い点が増え、階段が元の波形に近づきます。逆に500Hzまで下げると形が崩れます。<strong>標本化周期 = 1 ÷ 標本化周波数</strong> であることを、数値パネルで確認させます。</p>
+
+  <h3>3. 量子化：段の細かさを変える</h3>
+  <p>「量子化ビット数」を1bit（2段階）から上げていくと、階段のズレが小さくなります。「量子化誤差」にチェックを入れると、赤い縦線でズレの大きさが見えます。<strong>段階数 = 2 の ビット数 乗</strong>（8bit = 256段階、16bit = 65,536段階）を押さえます。</p>
+
+  <h3>4. 符号化：0と1にする</h3>
+  <p>表③で、標本値 → 量子化した段階の番号 → 2進数 の流れを1行ずつ追わせます。ビット数を変えると2進数の桁数が変わることが、符号化の意味を理解する手がかりになります。</p>
+
+  <h3>5. 標本化定理（ナイキスト周波数）</h3>
+  <p>「エイリアシング」プリセットを押します。②のスペクトルで、赤い破線（ナイキスト周波数＝標本化周波数の半分）より右の成分が記録できず、オレンジの山が本来と違う位置に<strong>折り返して</strong>現れることを示します。</p>
+  <div class="formula">
+    ナイキスト周波数 = 標本化周波数 ÷ 2<br>
+    正しく記録する条件： 標本化周波数 ≧ 記録したい最高周波数 × 2
+  </div>
+  <p>人の耳は約20〜20,000Hzを聞き取るため、CDの標本化周波数は 20,000 × 2 = 40,000 を上回る 44,100Hz に決められています。</p>
+
+  <h3>6. FFT（周波数スペクトル）の読み方</h3>
+  <p>①は「時間ごとの振幅」、②は「どの高さの音がどれだけ含まれるか」を表します。同じ音の2つの見方です。</p>
+  <ul>
+    <li>サイン波 … 山が1本だけ（純音）</li>
+    <li>三角波・合成波 … 基本周波数の山＋整数倍の位置に倍音の山</li>
+    <li>ビット数を下げる … スペクトルの底全体が持ち上がる（<strong>量子化雑音</strong>）</li>
+    <li>赤い領域にオレンジの山 … <strong>折り返し雑音</strong>の発生</li>
+  </ul>
+
+  <h3>7. マイクを使った探究活動</h3>
+  <table>
+    <tr><th>活動</th><th>操作</th><th>気づかせたいこと</th></tr>
+    <tr><td>自分の声の高さを測る</td><td>「あー」と発声し、②の主成分を読む</td><td>声の高さが数値（Hz）で表せる</td></tr>
+    <tr><td>母音のちがい</td><td>同じ高さで「あいうえお」</td><td>倍音の分布（フォルマント）が母音を決める</td></tr>
+    <tr><td>純音と雑音</td><td>口笛／拍手・「シー」</td><td>雑音は全周波数に広がる</td></tr>
+    <tr><td>電話の音質</td><td>録音 → 電話プリセットで聞き比べ</td><td>高い成分が失われると聞こえ方が変わる</td></tr>
+    <tr><td>ビット数と音質</td><td>録音 → 2bitで再生</td><td>量子化が粗いとザラつく</td></tr>
+  </table>
+
+  <h3>8. 表示・操作のヒント</h3>
+  <ul>
+    <li>声は動き続けるので <kbd>⏸ 波形を静止</kbd> で止めてから設定を変えると比較しやすい</li>
+    <li>波形の観察は表示時間 <kbd>20ms</kbd>、1周期の形を見るなら <kbd>5ms</kbd></li>
+    <li>倍音を見るなら表示範囲 <kbd>5kHz</kbd>＋縦軸 <kbd>dB</kbd></li>
+    <li>入力レベルが振れないときは「表示倍率」を上げる</li>
+  </ul>
+
+  <div class="note">
+    <strong>運用上の注意</strong><br>
+    ・マイクを使うため、このファイルは <strong>https:// のWebサーバー（LMS等）</strong> または各端末の <strong>ローカルファイル（file://）</strong> から開いてください。http:// のサーバーに置くとブラウザがマイクを許可しません。<br>
+    ・ハウリングを防ぐため、聞き比べのときはイヤホンを使うか、マイクを停止してから再生してください。<br>
+    ・「ノイズ抑制をオフにする」を有効にすると、ブラウザの自動音量調整による波形の歪みを避けられます。<br>
+    ・外部との通信は一切行いません。音声データは端末内でのみ処理され、保存も送信もされません。
+  </div>
+
+  <p style="margin-top:14px"><button class="printbtn" onclick="window.print()">🖨 このガイドを印刷する</button></p>
+</div>
+
+<footer class="foot">
+  音のデジタル化オシロスコープ＋FFT ／ 高校「情報Ⅰ」用Web教材<br>
+  1ファイル完結・外部ライブラリ不使用・通信なし。授業内での複製・改変・配布は自由です。<br>
+  動作環境： Google Chrome / Microsoft Edge / Safari / Firefox の最新版（Web Audio API・Canvas 対応ブラウザ）
+</footer>
+
+</div>
+<script>
+(function(){
+"use strict";
+/* =========================================================
+   音のデジタル化オシロスコープ＋FFT （高校 情報Ⅰ Web教材）
+   1ファイル完結・外部ライブラリ不使用・通信なし
+   ========================================================= */
+
+var FS=[500,1000,2000,4000,8000,11025,22050,44100];
+var st={src:'sim',f:200,fsIdx:2,bits:3,wave:'sine',ch:1,win:0.010,gain:3,
+        show:{analog:true,dots:true,step:true,err:false,lvl:true},
+        fft:{on:true,ana:true,dig:true,nyq:true,range:5000,scale:'db'}};
+
+/* ---------- 信号生成 ---------- */
+var NORM=1;
+(function(){var m=0;for(var i=0;i<3000;i++){var x=i/3000*2*Math.PI;
+  var v=0.6*Math.sin(x)+0.3*Math.sin(2*x)+0.2*Math.sin(3*x);
+  if(Math.abs(v)>m)m=Math.abs(v);}NORM=m;})();
+
+function sig(t){
+  var x=2*Math.PI*st.f*t;
+  if(st.wave==='sine')return Math.sin(x);
+  if(st.wave==='tri')return 2/Math.PI*Math.asin(Math.sin(x));
+  return (0.6*Math.sin(x)+0.3*Math.sin(2*x)+0.2*Math.sin(3*x))/NORM;
+}
+function quant(v){
+  var L=Math.pow(2,st.bits);
+  var idx=Math.round((Math.max(-1,Math.min(1,v))+1)/2*(L-1));
+  if(idx<0)idx=0; if(idx>L-1)idx=L-1;
+  return {idx:idx,v:idx/(L-1)*2-1,L:L};
+}
+function nf(n){return n.toLocaleString('en-US');}
+function clamp1(v){return v>1?1:(v<-1?-1:v);}
+function hz(v){return v>=1000?(v/1000).toFixed(v<10000?2:1)+' kHz':Math.round(v)+' Hz';}
+function $(id){return document.getElementById(id);}
+
+/* ---------- FFT (radix-2 Cooley-Tukey) ---------- */
+var FFTN=2048, LOGN=Math.round(Math.log(FFTN)/Math.LN2);
+var HANN=new Float32Array(FFTN);
+for(var w=0;w<FFTN;w++)HANN[w]=0.5-0.5*Math.cos(2*Math.PI*w/(FFTN-1));
+var REV=new Uint16Array(FFTN);
+(function(){for(var i=0;i<FFTN;i++){var r=0;
+  for(var b=0;b<LOGN;b++)if(i&(1<<b))r|=1<<(LOGN-1-b);REV[i]=r;}})();
+var COSt=[],SINt=[];
+(function(){for(var s=1;s<=LOGN;s++){var m=1<<s;
+  var cc=new Float32Array(m/2),ss=new Float32Array(m/2);
+  for(var j=0;j<m/2;j++){cc[j]=Math.cos(-2*Math.PI*j/m);ss[j]=Math.sin(-2*Math.PI*j/m);}
+  COSt[s]=cc;SINt[s]=ss;}})();
+
+var reBuf=new Float32Array(FFTN),imBuf=new Float32Array(FFTN),magBuf=new Float32Array(FFTN/2);
+function fftMag(input){
+  for(var i=0;i<FFTN;i++){reBuf[REV[i]]=input[i]*HANN[i];imBuf[i]=0;}
+  for(var s=1;s<=LOGN;s++){
+    var m=1<<s,h=m>>1,cc=COSt[s],ss=SINt[s];
+    for(var k=0;k<FFTN;k+=m){
+      for(var j=0;j<h;j++){
+        var tr=cc[j]*reBuf[k+j+h]-ss[j]*imBuf[k+j+h];
+        var ti=cc[j]*imBuf[k+j+h]+ss[j]*reBuf[k+j+h];
+        reBuf[k+j+h]=reBuf[k+j]-tr; imBuf[k+j+h]=imBuf[k+j]-ti;
+        reBuf[k+j]+=tr; imBuf[k+j]+=ti;
+      }
+    }
+  }
+  for(var q=0;q<FFTN/2;q++)
+    magBuf[q]=2*Math.sqrt(reBuf[q]*reBuf[q]+imBuf[q]*imBuf[q])/FFTN/0.5;
+  return magBuf;
+}
+
+/* ---------- マイク・録音 ---------- */
+var actx=null,micStream=null,analyser=null,micSrc=null,frame=null;
+var micOn=false,frozen=false,frozenData=null,frozenSr=44100,rafId=null;
+var rec=null,recSr=44100,recording=false,recProc=null,recChunks=[],recLen=0;
+
+function ctx(){
+  if(!actx)actx=new (window.AudioContext||window.webkitAudioContext)();
+  if(actx.state==='suspended')actx.resume();
+  return actx;
+}
+function srcSr(){return st.src==='sim'?44100:(frozen?frozenSr:(actx?actx.sampleRate:44100));}
+function analogAt(t){
+  if(st.src==='sim')return sig(t);
+  var data=frozen?frozenData:frame, sr=srcSr();
+  if(!data)return 0;
+  var i=Math.round(t*sr);
+  if(i<0||i>=data.length)return 0;
+  return clamp1(data[i]*st.gain);
+}
+function hasSignal(){return st.src==='sim'||(frozen?!!frozenData:!!frame);}
+
+/* ---------- スペクトル計算 ---------- */
+var aArr=new Float32Array(FFTN),dArr=new Float32Array(FFTN);
+var specA=null,specD=null,specSr=44100;
+function computeSpec(){
+  if(!st.fft.on||!hasSignal()){specA=specD=null;return;}
+  var sr=srcSr(),fs=FS[st.fsIdx];
+  specSr=sr;
+  if(st.src==='sim'){
+    for(var i=0;i<FFTN;i++){
+      var t=i/sr;
+      aArr[i]=sig(t);
+      var n=Math.floor(t*fs);
+      dArr[i]=quant(sig(n/fs)).v;
+    }
+  }else{
+    var data=frozen?frozenData:frame;
+    var len=data.length,off=Math.max(0,len-FFTN);
+    for(var j=0;j<FFTN;j++){var idx=off+j;
+      aArr[j]=idx<len?clamp1(data[idx]*st.gain):0;}
+    for(var k=0;k<FFTN;k++){
+      var tt=k/sr,nn=Math.floor(tt*fs),si=Math.round(nn/fs*sr);
+      if(si>=FFTN)si=FFTN-1; if(si<0)si=0;
+      dArr[k]=quant(aArr[si]).v;
+    }
+  }
+  specA=new Float32Array(fftMag(aArr));
+  specD=new Float32Array(fftMag(dArr));
+}
+function peakOf(spec){
+  if(!spec)return 0;
+  var bin=specSr/FFTN,best=0,bi=0;
+  var lim=Math.min(spec.length-1,Math.floor(st.fft.range/bin));
+  for(var i=2;i<lim;i++)if(spec[i]>best){best=spec[i];bi=i;}
+  if(bi<1||best<1e-4)return 0;
+  var a=spec[bi-1],b=spec[bi],cc=spec[bi+1]||0;
+  var den=(a-2*b+cc); var d=den!==0?(a-cc)/(2*den):0;
+  return (bi+(Math.abs(d)<1?d:0))*bin;
+}
+
+/* ---------- 描画準備 ---------- */
+var cv=$('oscCv'),c=cv.getContext('2d');
+var fcv=$('fftCv'),fc=fcv.getContext('2d');
+function fit(el,cx){
+  var dpr=window.devicePixelRatio||1,w=el.clientWidth,h=el.clientHeight;
+  el.width=Math.round(w*dpr);el.height=Math.round(h*dpr);
+  cx.setTransform(dpr,0,0,dpr,0,0);return {w:w,h:h};
+}
+
+/* ---------- ① 波形描画 ---------- */
+function draw(){
+  var d=fit(cv,c),W=d.w,H=d.h;
+  var pl=48,pr=14,pt=14,pb=30,plotW=W-pl-pr,WIN=st.win;
+  function x(t){return pl+t/WIN*plotW;}
+  var my=(H-pt-pb)/2+pt, amp=(H-pt-pb)/2-6;
+  function y(v){return my-clamp1(v)*amp;}
+  var fs=FS[st.fsIdx],L=Math.pow(2,st.bits);
+
+  c.clearRect(0,0,W,H);c.fillStyle='#0b1a17';c.fillRect(0,0,W,H);
+
+  var divs=10,msTotal=WIN*1000;
+  c.strokeStyle='rgba(120,200,180,.16)';c.lineWidth=1;
+  c.font='11px sans-serif';c.fillStyle='rgba(190,230,220,.68)';
+  for(var g=0;g<=divs;g++){
+    var xx=pl+plotW*g/divs;
+    c.beginPath();c.moveTo(xx,pt);c.lineTo(xx,H-pb);c.stroke();
+    if(g%2===0){c.textAlign='center';
+      c.fillText((msTotal*g/divs).toFixed(msTotal<10?1:0)+'ms',xx,H-pb+15);}
+  }
+  for(var i=-4;i<=4;i++){var yy=my-i/4*amp;
+    c.beginPath();c.moveTo(pl,yy);c.lineTo(W-pr,yy);c.stroke();}
+  c.strokeStyle='rgba(160,230,210,.45)';
+  c.beginPath();c.moveTo(pl,my);c.lineTo(W-pr,my);c.stroke();
+  c.textAlign='right';
+  c.fillText('+1',pl-6,y(1)+4);c.fillText('0',pl-6,my+4);c.fillText('-1',pl-6,y(-1)+4);
+  c.save();c.translate(14,my);c.rotate(-Math.PI/2);c.textAlign='center';
+  c.fillText('振幅（電圧）',0,0);c.restore();
+
+  if(st.show.lvl&&L<=32){
+    c.strokeStyle='rgba(255,190,80,.30)';c.setLineDash([3,4]);c.lineWidth=1;
+    for(var k=0;k<L;k++){var ly=y(k/(L-1)*2-1);
+      c.beginPath();c.moveTo(pl,ly);c.lineTo(W-pr,ly);c.stroke();}
+    c.setLineDash([]);
+  }
+
+  if(!hasSignal()){
+    c.textAlign='center';c.font='14px sans-serif';c.fillStyle='rgba(190,240,225,.78)';
+    c.fillText('「🎤 マイクを開始」を押して、声や音を入力してください',pl+plotW/2,my-8);
+    c.font='12px sans-serif';c.fillStyle='rgba(190,240,225,.5)';
+    c.fillText('ブラウザのマイク使用許可が必要です',pl+plotW/2,my+16);
+    return;
+  }
+
+  var pts=(st.src==='sim')?900:Math.max(60,Math.min(2400,Math.floor(WIN*srcSr())));
+  if(st.show.analog){
+    c.strokeStyle='#3DE0C8';c.lineWidth=1.7;c.beginPath();
+    for(var j=0;j<=pts;j++){
+      var t=j/pts*WIN,px=x(t),py=y(analogAt(t));
+      if(j===0)c.moveTo(px,py);else c.lineTo(px,py);
+    }
+    c.stroke();
+  }
+  var N=Math.floor(WIN*fs);
+  if(st.show.step){
+    c.strokeStyle='#FFB84D';c.lineWidth=2;c.beginPath();
+    for(var n=0;n<=N;n++){
+      var t2=n/fs,tn=Math.min((n+1)/fs,WIN),v2=quant(analogAt(t2)).v;
+      if(n===0)c.moveTo(x(t2),y(v2));else c.lineTo(x(t2),y(v2));
+      c.lineTo(x(tn),y(v2));
+    }
+    c.stroke();
+  }
+  if(st.show.err&&N<=400){
+    c.strokeStyle='#FF7A6B';c.lineWidth=2;
+    for(var n2=0;n2<=N;n2++){
+      var t3=n2/fs,a=analogAt(t3),b=quant(a).v;
+      c.beginPath();c.moveTo(x(t3),y(a));c.lineTo(x(t3),y(b));c.stroke();
+    }
+  }
+  if(st.show.dots&&N<=200){
+    for(var n3=0;n3<=N;n3++){
+      var t4=n3/fs,a2=analogAt(t4);
+      c.strokeStyle='rgba(255,255,255,.28)';c.setLineDash([2,3]);c.lineWidth=1;
+      c.beginPath();c.moveTo(x(t4),my);c.lineTo(x(t4),y(a2));c.stroke();c.setLineDash([]);
+      c.fillStyle='#FFFFFF';c.beginPath();c.arc(x(t4),y(a2),3,0,Math.PI*2);c.fill();
+    }
+  }
+  c.textAlign='left';c.font='12px sans-serif';c.fillStyle='rgba(190,240,225,.92)';
+  var head=(st.src==='sim')?('f = '+nf(st.f)+' Hz'):('🎤 マイク'+(frozen?'（静止中）':'（'+nf(srcSr())+' Hz）'));
+  c.fillText(head+' ／ fs = '+nf(fs)+' Hz ／ '+st.bits+' bit（'+nf(L)+'段階）／ 標本点 '+N+'個',pl+4,pt+11);
+  c.textAlign='center';c.fillStyle='rgba(190,230,220,.68)';
+  c.fillText('時間',pl+plotW/2,H-5);
+}
+
+/* ---------- ② スペクトル描画 ---------- */
+function drawFFT(){
+  var box=$('fftBox');
+  box.style.display=st.fft.on?'block':'none';
+  if(!st.fft.on)return;
+  var d=fit(fcv,fc),W=d.w,H=d.h;
+  var pl=48,pr=14,pt=14,pb=32,plotW=W-pl-pr,plotH=H-pt-pb;
+  var fmax=Math.min(st.fft.range,specSr/2);
+  function X(f){return pl+f/fmax*plotW;}
+  var DBMIN=-90;
+  function Y(m){
+    if(st.fft.scale==='db'){
+      var db=20*Math.log(Math.max(m,1e-7))/Math.LN10;
+      if(db<DBMIN)db=DBMIN; if(db>0)db=0;
+      return pt+plotH*(1-(db-DBMIN)/(0-DBMIN));
+    }
+    return pt+plotH*(1-Math.min(1,m));
+  }
+
+  fc.clearRect(0,0,W,H);fc.fillStyle='#0b1a17';fc.fillRect(0,0,W,H);
+  fc.font='11px sans-serif';
+  fc.strokeStyle='rgba(120,200,180,.16)';fc.lineWidth=1;
+  fc.fillStyle='rgba(190,230,220,.68)';fc.textAlign='right';
+  if(st.fft.scale==='db'){
+    for(var db=0;db>=DBMIN;db-=15){
+      var yy=Y(Math.pow(10,db/20));
+      fc.beginPath();fc.moveTo(pl,yy);fc.lineTo(W-pr,yy);fc.stroke();
+      fc.fillText(db+'dB',pl-6,yy+3);
+    }
+  }else{
+    for(var lv=0;lv<=1.001;lv+=0.25){
+      var yy2=Y(lv);
+      fc.beginPath();fc.moveTo(pl,yy2);fc.lineTo(W-pr,yy2);fc.stroke();
+      fc.fillText(lv.toFixed(2),pl-6,yy2+3);
+    }
+  }
+  var step=fmax<=2500?500:(fmax<=6000?1000:(fmax<=12000?2000:5000));
+  fc.textAlign='center';
+  for(var f=0;f<=fmax+1;f+=step){
+    var xx=X(f);
+    fc.beginPath();fc.moveTo(xx,pt);fc.lineTo(xx,H-pb);fc.stroke();
+    fc.fillText(f>=1000?(f/1000)+'k':String(f),xx,H-pb+14);
+  }
+  fc.fillText('周波数 (Hz)',pl+plotW/2,H-5);
+  fc.save();fc.translate(14,pt+plotH/2);fc.rotate(-Math.PI/2);
+  fc.textAlign='center';fc.fillText(st.fft.scale==='db'?'レベル':'振幅',0,0);fc.restore();
+
+  if(!hasSignal()||!specA){
+    fc.textAlign='center';fc.font='13px sans-serif';fc.fillStyle='rgba(190,240,225,.62)';
+    fc.fillText('信号を入力するとスペクトルが表示されます',pl+plotW/2,pt+plotH/2);
+    $('pkA').textContent='–';$('pkD').textContent='–';
+    $('pkN').textContent=hz(FS[st.fsIdx]/2);
+    return;
+  }
+
+  var bin=specSr/FFTN,nBins=Math.min(specA.length-1,Math.ceil(fmax/bin));
+  var fs=FS[st.fsIdx],nyq=fs/2;
+  if(nyq<fmax){
+    fc.fillStyle='rgba(255,122,107,.10)';
+    fc.fillRect(X(nyq),pt,X(fmax)-X(nyq),plotH);
+  }
+  function poly(spec,color,fill){
+    fc.beginPath();fc.moveTo(pl,H-pb);
+    for(var i=0;i<=nBins;i++)fc.lineTo(X(i*bin),Y(spec[i]||0));
+    fc.lineTo(X(nBins*bin),H-pb);fc.closePath();
+    fc.fillStyle=fill;fc.fill();
+    fc.beginPath();
+    for(var j=0;j<=nBins;j++){var px=X(j*bin),py=Y(spec[j]||0);
+      if(j===0)fc.moveTo(px,py);else fc.lineTo(px,py);}
+    fc.strokeStyle=color;fc.lineWidth=1.6;fc.stroke();
+  }
+  if(st.fft.dig)poly(specD,'#FFB84D','rgba(255,184,77,.16)');
+  if(st.fft.ana)poly(specA,'#3DE0C8','rgba(61,224,200,.14)');
+
+  if(st.fft.nyq&&nyq<=fmax){
+    fc.strokeStyle='#FF7A6B';fc.setLineDash([5,4]);fc.lineWidth=1.6;
+    fc.beginPath();fc.moveTo(X(nyq),pt);fc.lineTo(X(nyq),H-pb);fc.stroke();
+    fc.setLineDash([]);
+    fc.fillStyle='#FF7A6B';fc.font='11px sans-serif';
+    var right=X(nyq)>W-130;
+    fc.textAlign=right?'right':'left';
+    fc.fillText('ナイキスト '+hz(nyq),X(nyq)+(right?-5:5),pt+12);
+  }
+  var pa=peakOf(specA),pd=peakOf(specD);
+  if(pa>0&&pa<=fmax){
+    fc.fillStyle='#3DE0C8';fc.beginPath();
+    fc.arc(X(pa),Y(specA[Math.round(pa/bin)]||0),3.5,0,Math.PI*2);fc.fill();
+  }
+  if(pd>0&&pd<=fmax&&Math.abs(pd-pa)>bin*2){
+    var py2=Y(specD[Math.round(pd/bin)]||0);
+    fc.fillStyle='#FFB84D';fc.beginPath();fc.arc(X(pd),py2,3.5,0,Math.PI*2);fc.fill();
+    fc.textAlign='center';fc.font='11px sans-serif';
+    fc.fillText('折り返し '+hz(pd),X(pd),py2-9);
+  }
+  $('pkA').textContent=pa>0?hz(pa):'–';
+  $('pkD').textContent=pd>0?hz(pd):'–';
+  $('pkN').textContent=hz(nyq);
+}
+
+/* ---------- 数値・表・メッセージ ---------- */
+function updateInfo(){
+  var fs=FS[st.fsIdx],L=Math.pow(2,st.bits);
+  $('fVal').textContent=nf(st.f)+' Hz';
+  $('fsVal').textContent=nf(fs)+' Hz';
+  $('bVal').textContent=st.bits+' bit';
+  $('lvlVal').textContent=nf(L);
+  $('gVal').textContent='×'+st.gain;
+  var T=1/fs;
+  $('sPeriod').textContent=(T*1000<1)?(T*1e6).toFixed(1)+' μs':(T*1000).toFixed(2)+' ms';
+  $('sLevels').textContent=nf(L)+' 段階';
+  var br=fs*st.bits*st.ch;
+  $('sRate').textContent=(br/1000).toFixed(1)+' kbps';
+  var bytes=br/8*60;
+  $('sSize').textContent=(bytes/1048576<1)?(bytes/1024).toFixed(0)+' KB':(bytes/1048576).toFixed(2)+' MB';
+
+  $('calcBox').innerHTML=
+    '1秒間のデータ量 ＝ 標本化周波数 × 量子化ビット数 × チャンネル数<br>'+
+    '　＝ '+nf(fs)+' × '+st.bits+' × '+st.ch+' ＝ <b>'+nf(br)+' bit/秒</b>（'+(br/1000).toFixed(1)+' kbps）<br>'+
+    '1分間のデータ量 ＝ '+nf(br)+' ÷ 8 × 60 ＝ <b>'+nf(Math.round(bytes))+' バイト</b>'+
+    '（約 '+(bytes/1048576<1?(bytes/1024).toFixed(0)+' KB':(bytes/1048576).toFixed(2)+' MB')+'）';
+
+  var html='';
+  for(var n=0;n<8;n++){
+    var t=n/fs,a=hasSignal()?analogAt(t):0,q=quant(a);
+    var bin=q.idx.toString(2);
+    while(bin.length<st.bits)bin='0'+bin;
+    html+='<tr><td>'+n+'</td><td>'+(t*1000).toFixed(3)+' ms</td><td>'+a.toFixed(3)+
+          '</td><td>'+q.idx+' / '+(L-1)+'</td><td class="bin">'+bin+'</td></tr>';
+  }
+  $('codeBody').innerHTML=html;
+
+  var wb=$('warnBox'),pa=peakOf(specA),pd=peakOf(specD);
+  if(st.src==='mic'){
+    if(!hasSignal()){
+      wb.className='warn';
+      wb.innerHTML='🎤 マイクを開始すると、入力音の波形と<b>周波数スペクトル</b>が同時に表示されます。声の高さ（基本周波数）と倍音の並びを確認できます。現在のナイキスト周波数は <b>'+hz(fs/2)+'</b> です。';
+    }else if(pa>0&&fs<2*pa){
+      wb.className='warn bad';
+      wb.innerHTML='<b>⚠ エイリアシング（折り返し雑音）が発生しています</b><br>入力音の主成分 約'+hz(pa)+' に対し、標本化周波数 '+nf(fs)+' Hz のナイキスト周波数は '+hz(fs/2)+' しかありません。スペクトル②では、オレンジの山が本来と違う位置（約'+hz(pd)+'）に折り返して現れています。';
+    }else{
+      wb.className='warn ok';
+      wb.innerHTML='✅ 主成分 約<b>'+(pa>0?hz(pa):'—')+'</b>、ナイキスト周波数 <b>'+hz(fs/2)+'</b>。赤い破線より右の成分は記録できません。その帯域（赤く塗られた領域）にオレンジの山が出ていれば、それが折り返し雑音です。';
+    }
+  }else{
+    if(fs<2*st.f){
+      var kk=Math.round(st.f/fs),al=Math.abs(st.f-fs*kk);
+      wb.className='warn bad';
+      wb.innerHTML='<b>⚠ エイリアシング（折り返し雑音）が発生しています</b><br>標本化周波数 '+nf(fs)+' Hz は、元の音 '+nf(st.f)+' Hz の2倍（'+nf(2*st.f)+' Hz）より小さいため、標本点をつないでも元の波形に戻りません。スペクトル②では、オレンジの山が本来の '+hz(st.f)+' ではなく <b>約'+hz(al)+'</b> の位置に移動しているのが確認できます。';
+    }else{
+      wb.className='warn ok';
+      wb.innerHTML='✅ 標本化定理を満たしています（fs '+nf(fs)+' Hz ≧ 2f '+nf(2*st.f)+' Hz）。ナイキスト周波数は <b>'+hz(fs/2)+'</b>。量子化ビット数を下げると、スペクトル②の底が持ち上がる（量子化雑音）ことも観察できます。';
+    }
+  }
+}
+function render(){computeSpec();draw();drawFFT();updateInfo();}
+
+/* ---------- ライブループ ---------- */
+var tick=0;
+function loop(){
+  if(micOn&&!frozen&&analyser){
+    analyser.getFloatTimeDomainData(frame);
+    var mx=0;
+    for(var i=0;i<frame.length;i+=8){var v=Math.abs(frame[i]);if(v>mx)mx=v;}
+    $('meterBar').style.width=Math.min(100,mx*st.gain*100)+'%';
+    $('micInfo').textContent='入力レベル '+(mx*100).toFixed(1)+'%';
+    draw();
+    if(tick%2===0){computeSpec();drawFFT();}
+    if(tick%14===0)updateInfo();
+    tick++;
+  }
+  rafId=requestAnimationFrame(loop);
+}
+
+/* ---------- マイク制御 ---------- */
+var micBtn=$('micBtn'),freezeBtn=$('freezeBtn'),recBtn=$('recBtn'),
+    recOrig=$('recOrig'),recDig=$('recDig');
+
+function stopMic(){
+  micOn=false;
+  if(micStream){micStream.getTracks().forEach(function(t){t.stop();});micStream=null;}
+  if(micSrc){try{micSrc.disconnect();}catch(e){}micSrc=null;}
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  frame=null;analyser=null;
+  micBtn.textContent='🎤 マイクを開始';micBtn.classList.add('primary');
+  freezeBtn.disabled=true;recBtn.disabled=true;
+  $('meterBar').style.width='0%';$('micInfo').textContent='停止中';
+  render();
+}
+
+micBtn.addEventListener('click',function(){
+  if(micOn){stopMic();return;}
+  var raw=$('rawChk').checked;
+  var cons={audio:{echoCancellation:!raw,noiseSuppression:!raw,autoGainControl:!raw}};
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    var wb=$('warnBox');wb.className='warn err';
+    wb.innerHTML='<b>このブラウザ／環境ではマイク入力を利用できません。</b><br>このページが <code>https://</code> または端末内のファイル（<code>file://</code>）から開かれているか確認してください。<code>http://</code> のサーバー上ではブラウザがマイクを許可しません。';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia(cons).then(function(s){
+    micStream=s;var a=ctx();
+    micSrc=a.createMediaStreamSource(s);
+    analyser=a.createAnalyser();
+    analyser.fftSize=8192;analyser.smoothingTimeConstant=0;
+    micSrc.connect(analyser);
+    frame=new Float32Array(analyser.fftSize);
+    micOn=true;frozen=false;frozenData=null;
+    micBtn.textContent='■ マイクを停止';micBtn.classList.remove('primary');
+    freezeBtn.disabled=false;freezeBtn.textContent='⏸ 波形を静止';
+    recBtn.disabled=false;
+    if(!rafId)loop();
+    render();
+  }).catch(function(err){
+    var wb=$('warnBox');wb.className='warn err';
+    wb.innerHTML='<b>マイクを使用できませんでした（'+(err&&err.name?err.name:'エラー')+'）。</b><br>ブラウザのアドレスバーのマイクアイコンから使用を許可し、他のアプリがマイクを占有していないか確認してください。';
+  });
+});
+
+freezeBtn.addEventListener('click',function(){
+  if(!micOn&&!frozenData)return;
+  if(!frozen){
+    frozenData=frame?new Float32Array(frame):null;
+    frozenSr=actx?actx.sampleRate:44100;frozen=true;
+    freezeBtn.textContent='▶ 静止を解除';
+  }else{frozen=false;freezeBtn.textContent='⏸ 波形を静止';}
+  render();
+});
+
+/* ---------- 録音 ---------- */
+recBtn.addEventListener('click',function(){
+  if(recording||!micOn)return;
+  var a=ctx();recSr=a.sampleRate;recChunks=[];recLen=0;recording=true;
+  recBtn.textContent='● 録音中…';recBtn.disabled=true;
+  var proc=a.createScriptProcessor(4096,1,1);
+  var mute=a.createGain();mute.gain.value=0;
+  micSrc.connect(proc);proc.connect(mute);mute.connect(a.destination);
+  recProc=proc;
+  var limit=Math.floor(recSr*1.5);
+  proc.onaudioprocess=function(e){
+    if(!recording)return;
+    var ch0=e.inputBuffer.getChannelData(0);
+    recChunks.push(new Float32Array(ch0));recLen+=ch0.length;
+    if(recLen>=limit)finishRec();
+  };
+  setTimeout(function(){if(recording)finishRec();},2400);
+});
+
+function finishRec(){
+  recording=false;
+  if(recProc){try{recProc.disconnect();recProc.onaudioprocess=null;}catch(e){}recProc=null;}
+  rec=new Float32Array(recLen);var off=0;
+  recChunks.forEach(function(ch){rec.set(ch,off);off+=ch.length;});
+  recChunks=[];
+  recBtn.textContent='⏺ 1.5秒録音';recBtn.disabled=!micOn;
+  if(recLen>0){
+    recOrig.disabled=false;recDig.disabled=false;
+    var mx=0,mi=0;
+    for(var i=0;i<rec.length;i++){var v=Math.abs(rec[i]);if(v>mx){mx=v;mi=i;}}
+    var need=Math.max(FFTN+16,Math.floor(st.win*recSr)+8);
+    var start=Math.max(0,Math.min(Math.max(0,rec.length-need),mi-Math.floor(need/2)));
+    frozenData=rec.slice(start,start+need);frozenSr=recSr;frozen=true;
+    freezeBtn.disabled=false;freezeBtn.textContent='▶ 静止を解除';
+    $('recInfo').textContent='録音完了（最大音量の部分を静止表示中）。波形とスペクトルの両方で確認できます。';
+    render();
+  }
+}
+
+function playRec(kind){
+  if(!rec)return;
+  var a=ctx(),fs=FS[st.fsIdx];
+  var buf=a.createBuffer(1,rec.length,recSr),out=buf.getChannelData(0);
+  for(var i=0;i<rec.length;i++){
+    if(kind==='orig')out[i]=rec[i];
+    else{
+      var n=Math.floor(i/recSr*fs),si=Math.round(n/fs*recSr);
+      if(si>=rec.length)si=rec.length-1;
+      out[i]=quant(clamp1(rec[si]*st.gain)).v/st.gain;
+    }
+  }
+  var s=a.createBufferSource();s.buffer=buf;
+  var g=a.createGain();g.gain.value=0.9;
+  s.connect(g);g.connect(a.destination);s.start();
+}
+recOrig.addEventListener('click',function(){playRec('orig');});
+recDig.addEventListener('click',function(){playRec('dig');});
+
+/* ---------- モード切替 ---------- */
+function applyMode(){
+  var isMic=st.src==='mic';
+  $('micPanel').style.display=isMic?'flex':'none';
+  $('simCard').style.display=isMic?'none':'block';
+  $('simPlayRow').style.display=isMic?'none':'flex';
+  if(!isMic){stopMic();frozen=false;frozenData=null;}
+  render();
+}
+function segBind(sel,fn){
+  var btns=document.querySelectorAll(sel+' button');
+  Array.prototype.forEach.call(btns,function(b){
+    b.addEventListener('click',function(){
+      Array.prototype.forEach.call(btns,function(o){o.classList.remove('on');});
+      b.classList.add('on');fn(b);
+    });
+  });
+}
+segBind('#srcSeg',function(b){st.src=b.dataset.s;applyMode();});
+segBind('#waveSeg',function(b){st.wave=b.dataset.w;render();});
+segBind('#chSeg',function(b){st.ch=+b.dataset.c;render();});
+segBind('#winSeg',function(b){st.win=+b.dataset.ms/1000;render();});
+segBind('#rangeSeg',function(b){st.fft.range=+b.dataset.r;render();});
+segBind('#scaleSeg',function(b){st.fft.scale=b.dataset.y;render();});
+
+/* ---------- スライダー・チェックボックス ---------- */
+$('fRng').addEventListener('input',function(e){st.f=+e.target.value;render();});
+$('fsRng').addEventListener('input',function(e){st.fsIdx=+e.target.value;render();});
+$('bRng').addEventListener('input',function(e){st.bits=+e.target.value;render();});
+$('gRng').addEventListener('input',function(e){st.gain=+e.target.value;render();});
+$('rawChk').addEventListener('change',function(){
+  if(micOn){stopMic();setTimeout(function(){micBtn.click();},150);}
+});
+var fmap={fShow:'on',fAna:'ana',fDig:'dig',fNyq:'nyq'};
+Object.keys(fmap).forEach(function(id){
+  $(id).addEventListener('change',function(e){st.fft[fmap[id]]=e.target.checked;render();});
+});
+var smap={tAnalog:'analog',tDots:'dots',tStep:'step',tErr:'err',tLvl:'lvl'};
+Object.keys(smap).forEach(function(id){
+  $(id).addEventListener('change',function(e){st.show[smap[id]]=e.target.checked;draw();});
+});
+
+/* ---------- プリセット ---------- */
+function setUI(){
+  $('fRng').value=st.f;$('fsRng').value=st.fsIdx;$('bRng').value=st.bits;
+  render();
+}
+Array.prototype.forEach.call(document.querySelectorAll('.pbtn'),function(b){
+  b.addEventListener('click',function(){
+    var p=b.dataset.p;
+    if(p==='rough'){st.f=200;st.fsIdx=1;st.bits=2;}
+    if(p==='tel'){st.f=300;st.fsIdx=4;st.bits=8;}
+    if(p==='cd'){st.f=440;st.fsIdx=7;st.bits=16;}
+    if(p==='alias'){st.f=1800;st.fsIdx=0;st.bits=8;}
+    setUI();
+  });
+});
+
+/* ---------- シミュレーション音の再生 ---------- */
+function playSim(kind){
+  try{
+    var a=ctx(),dur=1.0,sr=a.sampleRate,fs=FS[st.fsIdx];
+    var buf=a.createBuffer(1,Math.floor(sr*dur),sr),ch=buf.getChannelData(0);
+    for(var i=0;i<ch.length;i++){
+      var t=i/sr,v;
+      if(kind==='orig')v=sig(t);
+      else{var n=Math.floor(t*fs);v=quant(sig(n/fs)).v;}
+      var env=Math.min(1,Math.min(t,dur-t)/0.03);
+      ch[i]=v*0.22*env;
+    }
+    var s=a.createBufferSource();s.buffer=buf;s.connect(a.destination);s.start();
+  }catch(e){}
+}
+$('pOrig').addEventListener('click',function(){playSim('orig');});
+$('pDig').addEventListener('click',function(){playSim('dig');});
+
+/* ---------- 初期化 ---------- */
+window.addEventListener('resize',function(){draw();drawFFT();});
+setUI();
+})();
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
+</body>
+</html>
