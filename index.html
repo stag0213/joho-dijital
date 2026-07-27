@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>先生用画面｜音と画像のデジタル化</title>
+  <style>
+    :root {
+      --text-primary:#1a2b28;
+      --text-secondary:#5a6b67;
+      --text-tertiary:#8a9995;
+      --text-link:#0a6ea8;
+      --text-on-brand:#ffffff;
+      --bg-page:#f4f7f6;
+      --bg-surface:#ffffff;
+      --bg-subtle:#eef3f1;
+      --brand-primary:#12776b;
+      --brand-secondary:#0f7fff;
+      --border-default:#d5e0dd;
+      --border-strong:#9fb4af;
+      --border-subtle:#e8efed;
+      --warning:#f59e0b;
+      --r8:8px;
+      --r12:12px;
+    }
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --text-primary:#e6f0ee;
+        --text-secondary:#a7b9b5;
+        --text-tertiary:#7d8f8b;
+        --text-link:#6cc6ff;
+        --text-on-brand:#052a26;
+        --bg-page:#0e1614;
+        --bg-surface:#16211f;
+        --bg-subtle:#1d2b28;
+        --brand-primary:#3ddbc4;
+        --brand-secondary:#5ab0ff;
+        --border-default:#2a3b38;
+        --border-strong:#496460;
+        --border-subtle:#22302d;
+      }
+    }
+    * { box-sizing:border-box; }
+    html,body { margin:0; padding:0; }
+    body {
+      background:var(--bg-page);
+      color:var(--text-primary);
+      font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo","Noto Sans JP",system-ui,-apple-system,sans-serif;
+      font-size:16px;
+      line-height:1.7;
+      padding:20px 16px 56px;
+    }
+    .page {
+      max-width:1280px;
+      margin:0 auto;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+    }
+    header {
+      background:var(--bg-surface);
+      border:1px solid var(--border-default);
+      border-radius:var(--r12);
+      padding:18px 20px;
+    }
+    .subject {
+      font-size:12px;
+      font-weight:700;
+      letter-spacing:.14em;
+      color:var(--brand-primary);
+    }
+    h1 {
+      font-size:28px;
+      line-height:1.3;
+      margin:6px 0 8px;
+    }
+    .lead {
+      margin:0;
+      color:var(--text-secondary);
+      font-size:14px;
+    }
+    .toolbar {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .toolbar button {
+      min-height:44px;
+      padding:0 15px;
+      border-radius:999px;
+      border:1px solid var(--border-default);
+      background:var(--bg-surface);
+      color:var(--text-primary);
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .toolbar button.active {
+      background:var(--brand-primary);
+      color:var(--text-on-brand);
+      border-color:var(--brand-primary);
+    }
+    .toolbar .accent {
+      background:var(--bg-subtle);
+      color:var(--text-link);
+      border-radius:var(--r8);
+    }
+    .grid {
+      display:grid;
+      grid-template-columns:1.25fr .75fr;
+      gap:14px;
+    }
+    .card {
+      background:var(--bg-surface);
+      border:1px solid var(--border-default);
+      border-radius:var(--r12);
+      padding:14px 16px;
+    }
+    .card h2 {
+      margin:0 0 8px;
+      font-size:18px;
+    }
+    .card h3 {
+      margin:14px 0 4px;
+      font-size:15px;
+      color:var(--brand-primary);
+    }
+    .card p, .card li {
+      font-size:14px;
+      line-height:1.82;
+      margin:4px 0;
+    }
+    .card ul {
+      margin:6px 0 0;
+      padding-left:1.3em;
+    }
+    .badge {
+      display:inline-block;
+      padding:3px 9px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid var(--border-default);
+      background:var(--bg-subtle);
+      color:var(--text-secondary);
+    }
+    .status {
+      font-size:13px;
+      color:var(--text-secondary);
+      line-height:1.8;
+    }
+    .note {
+      background:var(--bg-subtle);
+      border-left:5px solid var(--warning);
+      border-radius:var(--r8);
+      padding:11px 14px;
+      font-size:13px;
+      line-height:1.8;
+    }
+    .preview-wrap {
+      background:#fff;
+      border:1px solid var(--border-default);
+      border-radius:var(--r12);
+      overflow:hidden;
+    }
+    .preview-head {
+      padding:10px 12px;
+      border-bottom:1px solid var(--border-subtle);
+      font-size:13px;
+      color:var(--text-secondary);
+    }
+    iframe.preview {
+      width:100%;
+      min-height:1250px;
+      border:0;
+      display:block;
+      background:#fff;
+    }
+    table.compare {
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+      margin-top:8px;
+    }
+    table.compare th,
+    table.compare td {
+      border:1px solid var(--border-default);
+      padding:8px 9px;
+      text-align:left;
+      vertical-align:top;
+    }
+    table.compare th {
+      background:var(--bg-subtle);
+      font-weight:700;
+    }
+    footer {
+      font-size:12px;
+      color:var(--text-tertiary);
+      border-top:1px solid var(--border-default);
+      padding-top:12px;
+    }
+    @media (max-width:960px) {
+      .grid { grid-template-columns:1fr; }
+      h1 { font-size:23px; }
+      body { padding:14px 10px 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="subject">高校 情報Ⅰ ／ 先生用画面</div>
+      <h1>音と画像のデジタル化｜先生用コントロール</h1>
+      <p class="lead">授業者向けの進行メモ・切り替えボタン・プレビューを備えた画面です。必要に応じて、生徒用画面を別ウィンドウで開いて同じブラウザ内で同期表示できます。</p>
+    </header>
+
+    <div class="toolbar">
+      <button id="show-audio" class="active">🎵 音の教材を表示</button>
+      <button id="show-image">🖼 画像の教材を表示</button>
+      <button id="open-student" class="accent">生徒用画面を別ウィンドウで開く</button>
+      <button id="reopen-student" class="accent">生徒用画面を再送信</button>
+    </div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>プレビュー <span class="badge" id="modeBadge">現在：音の教材</span></h2>
+        <div class="status" id="syncInfo">この画面の切り替えは、同じブラウザ内で開いた生徒用画面に同期されます。別端末で使う場合は、下の生徒用ファイルを個別に開いてください。</div>
+        <div class="preview-wrap">
+          <div class="preview-head" id="previewHead">音の教材プレビュー（オシロスコープ・FFT・マイク入力）</div>
+          <iframe id="previewFrame" class="preview" allow="microphone; camera; autoplay"></iframe>
+        </div>
+      </section>
+
+      <aside class="card" id="notesBox">
+        <h2>進行メモ</h2>
+        <div id="notesContent"></div>
+        <h3>共通の比較観点</h3>
+        <table class="compare">
+          <tr><th>段階</th><th>音</th><th>画像</th></tr>
+          <tr><td>標本化</td><td>時間方向に何回測るか</td><td>空間方向に何個に分けるか</td></tr>
+          <tr><td>量子化</td><td>振幅を何段階で表すか</td><td>明るさ・色を何段階で表すか</td></tr>
+          <tr><td>符号化</td><td>段階番号を2進数に</td><td>画素の値を2進数に</td></tr>
+          <tr><td>粗いときの見え方</td><td>ざらつき・折り返し雑音</td><td>モザイク・色の段差</td></tr>
+        </table>
+        <div class="note" style="margin-top:12px">
+          マイク・カメラの許可がプレビュー内で通りにくい端末では、<b>生徒用画面を別ウィンドウで開く</b>か、配布用の生徒用HTMLを直接開く運用が安定します。
+        </div>
+      </aside>
+    </div>
+
+    <footer>
+      先生用画面と生徒用画面を分離した構成です。必要なら次に、確認問題欄・ワークシート入力欄・授業用タイマーなどを追加できます。
+    </footer>
+  </div>
+
+  <script>
+    const MODULE_URLS = {
+      audio: './audio_digitization_oscilloscope.html',
+      image: './image_digitization_simulator.html'
+    };
+    const STUDENT_URL = './student_screen_digitalization_github.html';
+
+    const bc = ('BroadcastChannel' in window)
+      ? new BroadcastChannel('joho1_digitalization_dual_v1')
+      : null;
+
+    let current = 'audio';
+    let studentWin = null;
+
+    const notes = {
+      audio: `
+        <h3>導入</h3>
+        <p>まず「アナログの波形」と「デジタル化後の階段波形」を比較し、音が連続値ではなく標本点の集まりとして扱われることを確認します。</p>
+        <h3>見せたいポイント</h3>
+        <ul>
+          <li>標本化周波数を下げると、白い標本点が減って波形復元が難しくなる</li>
+          <li>ビット数を下げると、波形が粗くなり、スペクトルの底が上がる（量子化雑音）</li>
+          <li>エイリアシングのプリセットで、折り返し雑音が波形とFFTの両方に現れる</li>
+        </ul>
+        <h3>発問例</h3>
+        <p>「44.1kHzという数字はなぜ必要か」「電話の声とCDの音質が違うのはなぜか」</p>`,
+      image: `
+        <h3>導入</h3>
+        <p>元画像とデジタル化後を左右で比較し、画像が画素の集まりになることを確認します。音の標本化と同じ考え方で、空間を区切っていることを結びつけます。</p>
+        <h3>見せたいポイント</h3>
+        <ul>
+          <li>解像度を下げるとモザイク化し、情報が失われる</li>
+          <li>階調ビット数を下げると、グラデーションに段差が現れる</li>
+          <li>1画素の値をクリックして、量子化値と2進数の対応を読む</li>
+        </ul>
+        <h3>発問例</h3>
+        <p>「解像度を2倍にするとデータ量は何倍か」「フルカラー1,677万色はどう計算するか」</p>`
+    };
+
+    function setMode(mode, emit) {
+      current = mode;
+      document.getElementById('previewFrame').src = MODULE_URLS[mode];
+      document.getElementById('show-audio').classList.toggle('active', mode === 'audio');
+      document.getElementById('show-image').classList.toggle('active', mode === 'image');
+      document.getElementById('modeBadge').textContent = '現在：' + (mode === 'audio' ? '音の教材' : '画像の教材');
+      document.getElementById('previewHead').textContent = mode === 'audio'
+        ? '音の教材プレビュー（オシロスコープ・FFT・マイク入力）'
+        : '画像の教材プレビュー（解像度・階調・画素値・カメラ入力）';
+      document.getElementById('notesContent').innerHTML = notes[mode];
+      if (emit && bc) {
+        bc.postMessage({ type:'mode', mode:current });
+      }
+    }
+
+    document.getElementById('show-audio').addEventListener('click', () => setMode('audio', true));
+    document.getElementById('show-image').addEventListener('click', () => setMode('image', true));
+
+    document.getElementById('open-student').addEventListener('click', () => {
+      studentWin = window.open(STUDENT_URL, '_blank', 'noopener');
+      if (studentWin && bc) {
+        setTimeout(() => bc.postMessage({ type:'mode', mode:current }), 500);
+      }
+    });
+
+    document.getElementById('reopen-student').addEventListener('click', () => {
+      if (bc) {
+        bc.postMessage({ type:'mode', mode:current });
+      }
+    });
+
+    window.addEventListener('message', (ev) => {
+      const d = ev.data || {};
+      if (d.type !== 'gs-height' || !d.height) return;
+      const h = Math.max(1100, Math.min(5000, Number(d.height) + 8));
+      document.getElementById('previewFrame').style.height = h + 'px';
+    });
+
+    setMode('audio', false);
+  </script>
+</body>
+</html>
